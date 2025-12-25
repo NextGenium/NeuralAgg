@@ -40,6 +40,14 @@ const ChatLayout = dynamic(() => import('./(main)/chat/_layout/Desktop'), {
   ssr: false,
 });
 
+const DesktopCatalogPage = dynamic(
+  () => import('./(main)/catalog').then((m) => m.DesktopCatalogPage),
+  {
+    loading: () => <Loading />,
+    ssr: false,
+  },
+);
+
 // Changelog components
 const ChangelogPage = dynamic(() => import('./(main)/changelog/index').then((m) => m.DesktopPage), {
   loading: () => <Loading />,
@@ -303,6 +311,24 @@ export const createDesktopRouter = (locale: Locales) =>
           element: <ChatLayout />,
           errorElement: <ChatErrorBoundary />,
           path: 'chat',
+        },
+
+        // Catalog routes
+        {
+          children: [
+            {
+              element: <DesktopCatalogPage />,
+              index: true,
+            },
+            {
+              element: <DesktopCatalogPage />,
+              path: '*',
+            },
+          ],
+          // используем ChatLayout, чтобы каталог был в том же “фрейме”
+          element: <ChatLayout />,
+          errorElement: <ChatErrorBoundary />,
+          path: 'catalog',
         },
 
         // Discover routes with nested structure

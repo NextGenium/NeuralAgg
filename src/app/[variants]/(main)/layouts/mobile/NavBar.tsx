@@ -3,7 +3,7 @@
 import { Icon } from '@lobehub/ui';
 import { TabBar, type TabBarProps } from '@lobehub/ui/mobile';
 import { createStyles } from 'antd-style';
-import { Compass, MessageSquare, User } from 'lucide-react';
+import { Compass, FolderClosed, MessageSquare, User } from 'lucide-react';
 import { rgba } from 'polished';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -48,6 +48,16 @@ const NavBar = memo(() => {
             navigate('/chat');
           },
           title: t('tab.chat'),
+        },
+        {
+          icon: (active: boolean) => (
+            <Icon className={active ? styles.active : undefined} icon={FolderClosed} />
+          ),
+          key: SidebarTabKey.Catalog,
+          onClick: () => {
+            navigate('/catalog');
+          },
+          title: t('tab.catalog'),
         },
         showMarket && {
           icon: (active: boolean) => (

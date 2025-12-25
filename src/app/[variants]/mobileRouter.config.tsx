@@ -41,6 +41,15 @@ const ChatLayout = dynamic(() => import('./(main)/chat/_layout/Mobile'), {
   ssr: false,
 });
 
+// Catalog components
+const MobileCatalogPage = dynamic(
+  () => import('./(main)/catalog').then((m) => m.MobileCatalogPage),
+  {
+    loading: () => <Loading />,
+    ssr: false,
+  },
+);
+
 // Changelog components
 const ChangelogPage = dynamic(() => import('./(main)/changelog/index').then((m) => m.MobilePage), {
   loading: () => <Loading />,
@@ -323,6 +332,19 @@ export const createMobileRouter = (locale: Locales) =>
           element: <ChatLayout />,
           errorElement: <ChatErrorBoundary />,
           path: 'chat',
+        },
+
+        // Catalog routes
+        {
+          children: [
+            {
+              element: <MobileCatalogPage />,
+              index: true,
+            },
+          ],
+          element: <ChatLayout />,
+          errorElement: <ChatErrorBoundary />,
+          path: 'catalog',
         },
 
         // Discover routes with nested structure

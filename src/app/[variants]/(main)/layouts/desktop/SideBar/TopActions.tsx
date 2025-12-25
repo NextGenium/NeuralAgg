@@ -44,6 +44,7 @@ const TopActions = memo<TopActionProps>(({ tab, isPinned }) => {
   );
 
   const isChatActive = tab === SidebarTabKey.Chat && !isPinned;
+  const isCatalogActive = tab === SidebarTabKey.Catalog;
   const isKnowledgeActive = tab === SidebarTabKey.Knowledge;
   const isDiscoverActive = tab === SidebarTabKey.Discover;
   const isImageActive = tab === SidebarTabKey.Image;
@@ -99,6 +100,14 @@ const TopActions = memo<TopActionProps>(({ tab, isPinned }) => {
           tooltipProps={{ placement: 'right' }}
         />
       )}
+      <ActionIcon
+        active={isCatalogActive}
+        icon={FolderClosed}
+        onClick={() => handleNavigate('/catalog')}
+        size={ICON_SIZE}
+        title={t('tab.catalog')}
+        tooltipProps={{ placement: 'right' }}
+      />
       {showMarket && (
         <ActionIcon
           active={isDiscoverActive}

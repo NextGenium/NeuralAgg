@@ -354,6 +354,7 @@ export default {
   },
   tab: {
     aiImage: 'AI 绘画',
+    catalog: '模型库',
     chat: '会话',
     discover: '发现',
     files: '文件',

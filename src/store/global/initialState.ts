@@ -7,6 +7,7 @@ import { SessionDefaultGroup } from '@/types/session';
 import { AsyncLocalStorage } from '@/utils/localStorage';
 
 export enum SidebarTabKey {
+  Catalog = 'catalog',
   Chat = 'chat',
   Discover = 'discover',
   Files = 'knowledge',
