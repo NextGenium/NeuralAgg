@@ -11,15 +11,29 @@ import PageTitle from './features/PageTitle';
 const ModelFromQueryBanner = memo(() => {
   const searchParams = useSearchParams();
   const model = searchParams.get('model');
+  const service = searchParams.get('service');
 
-  if (!model) return null;
+  if (!model && !service) return null;
 
   return (
     <Flexbox paddingBlock={8} paddingInline={16}>
       <div className="text-[11px] rounded-lg border px-3 py-2 opacity-80">
-        Вы открыли чат из каталога модели: <code className="font-mono text-[11px]">{model}</code>
-        <br />
-        Выберите эту модель в селекторе сверху, если хотите использовать именно её.
+        {model && (
+          <>
+            Вы открыли чат из каталога <b>модели</b>:{' '}
+            <code className="font-mono text-[11px]">{model}</code>
+            <br />
+          </>
+        )}
+        {service && (
+          <>
+            Вы открыли чат из каталога <b>сервиса</b>:{' '}
+            <code className="font-mono text-[11px]">{service}</code>
+            <br />
+          </>
+        )}
+        Выберите нужную модель/пресет в селекторе сверху, если хотите использовать её для этого
+        диалога.
       </div>
     </Flexbox>
   );

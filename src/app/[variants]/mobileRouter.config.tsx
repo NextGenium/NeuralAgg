@@ -67,6 +67,15 @@ const MobileHomePage = dynamic(
     ssr: false,
   },
 );
+
+const MobileServicesPage = dynamic(
+  () => import('./(main)/services').then((m) => m.MobileServicesPage),
+  {
+    loading: () => <Loading />,
+    ssr: false,
+  },
+);
+
 const MobileAssistantPage = dynamic(
   () => import('./(main)/discover/(list)/assistant/index').then((m) => m.MobileAssistantPage),
   {
@@ -553,6 +562,19 @@ export const createMobileRouter = (locale: Locales) =>
           element: <ChangelogLayout locale={locale} />,
           errorElement: <ChangelogErrorBoundary />,
           path: 'changelog',
+        },
+
+        // Services routes
+        {
+          children: [
+            {
+              element: <MobileServicesPage />,
+              index: true,
+            },
+          ],
+          element: <ChatLayout />,
+          errorElement: <ChatErrorBoundary />,
+          path: 'services',
         },
 
         // Default route - redirect to chat

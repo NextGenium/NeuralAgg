@@ -238,6 +238,15 @@ const DesktopProfileUsagePage = dynamic(
     ssr: false,
   },
 );
+
+const DesktopServicesPage = dynamic(
+  () => import('./(main)/services').then((m) => m.DesktopServicesPage),
+  {
+    loading: () => <Loading />,
+    ssr: false,
+  },
+);
+
 const ProfileLayoutWrapper = dynamic(() => import('./(main)/profile/_layout/DesktopWrapper'), {
   loading: () => <Loading />,
   ssr: false,
@@ -515,6 +524,24 @@ export const createDesktopRouter = (locale: Locales) =>
           errorElement: <ChangelogErrorBoundary />,
           path: 'changelog',
         },
+        // Services routes
+        {
+          children: [
+            {
+              element: <DesktopServicesPage />,
+              index: true,
+            },
+            // опционально, если хочешь, чтобы /services/* тоже рендерил список
+            {
+              element: <DesktopServicesPage />,
+              path: '*',
+            },
+          ],
+          element: <ChatLayout />,
+          errorElement: <ChatErrorBoundary />,
+          path: 'services',
+        },
+
         // Default route - redirect to chat
         {
           index: true,

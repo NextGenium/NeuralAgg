@@ -1,5 +1,5 @@
 import { ActionIcon, ActionIconProps, Hotkey } from '@lobehub/ui';
-import { Compass, FolderClosed, MessageSquare, Palette } from 'lucide-react';
+import { Compass, FolderClosed, MessageSquare, Palette, PanelsTopLeft } from 'lucide-react';
 import { memo, useMemo, useTransition } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
@@ -48,6 +48,7 @@ const TopActions = memo<TopActionProps>(({ tab, isPinned }) => {
   const isKnowledgeActive = tab === SidebarTabKey.Knowledge;
   const isDiscoverActive = tab === SidebarTabKey.Discover;
   const isImageActive = tab === SidebarTabKey.Image;
+  const isServicesActive = tab === SidebarTabKey.Services;
 
   const handleNavigate = (path: string) => {
     startTransition(() => {
@@ -106,6 +107,14 @@ const TopActions = memo<TopActionProps>(({ tab, isPinned }) => {
         onClick={() => handleNavigate('/catalog')}
         size={ICON_SIZE}
         title={t('tab.catalog')}
+        tooltipProps={{ placement: 'right' }}
+      />
+      <ActionIcon
+        active={isServicesActive}
+        icon={PanelsTopLeft}
+        onClick={() => handleNavigate('/services')}
+        size={ICON_SIZE}
+        title="Сервисы"
         tooltipProps={{ placement: 'right' }}
       />
       {showMarket && (

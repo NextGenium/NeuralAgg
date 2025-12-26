@@ -3,7 +3,7 @@
 import { Icon } from '@lobehub/ui';
 import { TabBar, type TabBarProps } from '@lobehub/ui/mobile';
 import { createStyles } from 'antd-style';
-import { Compass, FolderClosed, MessageSquare, User } from 'lucide-react';
+import { Compass, FolderClosed, MessageSquare, PanelsTopLeft, User } from 'lucide-react';
 import { rgba } from 'polished';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -59,6 +59,17 @@ const NavBar = memo(() => {
           },
           title: t('tab.catalog'),
         },
+        {
+          icon: (active: boolean) => (
+            <Icon className={active ? styles.active : undefined} icon={PanelsTopLeft} />
+          ),
+          key: SidebarTabKey.Services,
+          onClick: () => {
+            navigate('/services');
+          },
+          title: t('tab.services'),
+        },
+
         showMarket && {
           icon: (active: boolean) => (
             <Icon className={active ? styles.active : undefined} icon={Compass} />
