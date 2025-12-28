@@ -4,7 +4,8 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Flexbox } from 'react-layout-kit';
 
-import type { NeuralServiceDto } from '../index';
+// импортируем тип сервиса из ServiceCard
+import type { Service as NeuralServiceDto } from '../components/ServiceCard';
 
 const ServiceDetailPage = () => {
   const params = useParams();
@@ -33,7 +34,7 @@ const ServiceDetailPage = () => {
         }
 
         const json = await res.json();
-        setService(json);
+        setService(json as NeuralServiceDto);
       } catch (e) {
         if (!(e instanceof DOMException && e.name === 'AbortError')) {
           console.error('Failed to load service detail', e);
@@ -43,7 +44,7 @@ const ServiceDetailPage = () => {
       }
     };
 
-    load();
+    void load();
 
     return () => controller.abort();
   }, [slug]);
@@ -71,7 +72,10 @@ const ServiceDetailPage = () => {
   return (
     <Flexbox gap={12} height="100%" padding={16}>
       {/* eslint-disable-next-line react/button-has-type */}
-      <button className="text-xs opacity-70 hover:underline w-fit" onClick={() => history.back()}>
+      <button
+        className="text-xs opacity-70 hover:underline w-fit"
+        onClick={() => window.history.back()}
+      >
         ← Назад
       </button>
 
@@ -98,7 +102,7 @@ const ServiceDetailPage = () => {
 
         {service.tags && service.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {service.tags.map((t) => (
+            {service.tags.map((t: { name: string; slug: string }) => (
               <span className="px-2 py-1 rounded-full border text-[11px] opacity-80" key={t.slug}>
                 {t.name}
               </span>

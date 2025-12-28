@@ -1,170 +1,169 @@
 'use client';
 
-import type { ChatModelCard } from '@lobechat/types';
 import { memo, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
 
-import { modelsService } from '@/services/models';
-
-type CatalogModel = ChatModelCard & {
-  _category?: 'text' | 'image' | 'video' | 'other';
-};
-
-const deriveCategory = (model: ChatModelCard): CatalogModel['_category'] => {
-  const anyModel = model as any;
-  if (anyModel.video) return 'video';
-  if (anyModel.imageOutput || anyModel.vision) return 'image';
-  return 'text';
-};
-
-const CATEGORIES: { label: string; value: CatalogModel['_category'] | 'all' }[] = [
-  { label: 'Все', value: 'all' },
-  { label: 'Текст', value: 'text' },
-  { label: 'Картинки / Vision', value: 'image' },
-  { label: 'Видео', value: 'video' },
-];
+import { type CatalogModel, ModelCard } from './components/ModelCard';
 
 interface CatalogPageInnerProps {
   mobile?: boolean;
 }
 
+const SkeletonCard = () => (
+  <div className="flex flex-col rounded-2xl border px-4 py-3 text-xs animate-pulse">
+    <div className="flex items-start gap-3 mb-2">
+      <div className="w-8 h-8 rounded-xl bg-[rgba(0,0,0,0.06)]" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3 w-32 rounded bg-[rgba(0,0,0,0.06)]" />
+        <div className="h-2 w-24 rounded bg-[rgba(0,0,0,0.04)]" />
+        <div className="h-2 w-full rounded bg-[rgba(0,0,0,0.04)]" />
+        <div className="h-2 w-3/4 rounded bg-[rgba(0,0,0,0.04)]" />
+      </div>
+    </div>
+    <div className="flex gap-2 mt-2">
+      <div className="h-6 flex-1 rounded-lg bg-[rgba(0,0,0,0.04)]" />
+      <div className="h-6 flex-1 rounded-lg bg-[rgba(0,0,0,0.04)]" />
+    </div>
+  </div>
+);
+
+const EmptyState = ({ message }: { message: string }) => (
+  <Flexbox align="center" gap={8} height="100%" justify="center" padding={24}>
+    <div className="text-3xl">🔎</div>
+    <div className="text-sm opacity-80 text-center max-w-xs">{message}</div>
+  </Flexbox>
+);
+
 const CatalogPageInner = memo<CatalogPageInnerProps>(({ mobile }) => {
-  const { t } = useTranslation('common');
-  const [rawModels, setRawModels] = useState<ChatModelCard[]>([]);
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState<'all' | CatalogModel['_category']>('all');
+  const [models, setModels] = useState<CatalogModel[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'text' | 'image' | 'other'>('all');
+
+  // TODO: сюда вставь свою реальную функцию загрузки моделей из OpenRouter
+  const fetchModels = async (params: { search?: string; type?: string }) => {
+    // пример: дергаем уже существующий бэкенд /api/models/openrouter
+    const urlParams = new URLSearchParams();
+    if (params.search) urlParams.set('search', params.search);
+    if (params.type && params.type !== 'all') urlParams.set('type', params.type);
+
+    const res = await fetch(`/api/models/openrouter?${urlParams.toString()}`);
+    if (!res.ok) throw new Error('Failed to load models');
+
+    const json = await res.json();
+    // ожидаем, что json.items уже в нужной форме
+    return (json.items ?? []) as CatalogModel[];
+  };
 
   useEffect(() => {
-    let cancel = false;
+    const controller = new AbortController();
 
-    (async () => {
+    const load = async () => {
       setLoading(true);
+      setError(null);
+
       try {
-        const list = await modelsService.getModels('openrouter');
-        if (!cancel && list) setRawModels(list);
+        const items = await fetchModels({
+          search,
+          type: typeFilter === 'all' ? undefined : typeFilter,
+        });
+        setModels(items);
       } catch (e) {
-        console.error('Failed to load OpenRouter models', e);
+        console.error(e);
+        setError('Не удалось загрузить модели OpenRouter');
+        setModels([]);
       } finally {
-        if (!cancel) setLoading(false);
+        setLoading(false);
       }
-    })();
-
-    return () => {
-      cancel = true;
     };
-  }, []);
 
-  const models: CatalogModel[] = useMemo(() => {
-    const prepared = rawModels.map((m) => ({
-      ...m,
-      _category: deriveCategory(m),
-    }));
+    load();
 
-    return prepared
-      .filter((m) => {
-        if (!search) return true;
-        const s = search.toLowerCase();
-        return (
-          (m.displayName || m.id).toLowerCase().includes(s) ||
-          (m.description || '').toLowerCase().includes(s)
-        );
-      })
-      .filter((m) => {
-        if (category === 'all') return true;
-        return m._category === category;
-      });
-  }, [rawModels, search, category]);
+    return () => controller.abort();
+  }, [search, typeFilter]);
+
+  const tags = useMemo(
+    () => [
+      { name: 'Текст', slug: 'text' },
+      { name: 'Картинки', slug: 'image' },
+      { name: 'Другое', slug: 'other' },
+    ],
+    [],
+  );
+
+  const showSkeleton = loading && !models.length && !error;
+  const showEmpty = !loading && !error && !models.length;
 
   return (
     <Flexbox gap={mobile ? 8 : 12} height="100%" padding={mobile ? 12 : 16}>
-      {/* Заголовок */}
       <Flexbox gap={4}>
-        <div className="text-base font-medium">
-          OpenRouter · {t('tab.catalog') ?? 'Каталог моделей'}
-        </div>
+        <div className="text-base font-medium">Каталог моделей</div>
         <div className="text-xs opacity-70">
-          Выбирайте модели из OpenRouter (300+), открывайте описание и переходите в чат.
+          Модели OpenRouter (GPT, Claude, LLaMA и др.), доступные прямо из lobby-чата.
         </div>
       </Flexbox>
 
-      {/* Поиск + фильтры */}
-      <Flexbox align="center" direction="horizontal" gap={8}>
+      {/* Поиск + тип */}
+      <Flexbox align="center" direction="horizontal" gap={8} wrap="wrap">
         <input
           className="flex-1 min-w-[160px] rounded-lg border px-3 py-2 text-xs bg-transparent"
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Поиск по имени или описанию модели…"
+          placeholder="Поиск по названию модели…"
           value={search}
         />
         <select
           className="rounded-lg border px-3 py-2 text-xs bg-transparent"
-          onChange={(e) => setCategory(e.target.value as any)}
-          value={category}
+          onChange={(e) => setTypeFilter(e.target.value as any)}
+          value={typeFilter}
         >
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
+          <option value="all">Все типы</option>
+          {tags.map((t) => (
+            <option key={t.slug} value={t.slug}>
+              {t.name}
             </option>
           ))}
         </select>
       </Flexbox>
 
-      {loading && <div className="text-xs opacity-70">Загружаем модели OpenRouter…</div>}
+      {error && <div className="text-[11px] text-red-500">{error}</div>}
 
-      {!loading && models.length === 0 && (
-        <div className="text-xs opacity-70">
-          Ничего не найдено. Попробуйте изменить запрос или категорию.
+      {showSkeleton && (
+        <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 pb-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
         </div>
       )}
 
-      {/* Список моделей */}
-      <div className="flex-1 overflow-y-auto grid gap-8 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 pb-4">
-        {models.map((m) => (
-          <div className="flex flex-col rounded-xl border px-3 py-3 text-xs" key={m.id}>
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <div className="font-medium truncate">{m.displayName || m.id}</div>
-              <span className="px-2 py-1 rounded-full border opacity-70">
-                {m._category ?? 'text'}
-              </span>
-            </div>
+      {showEmpty && (
+        <EmptyState message="По текущему запросу модели не найдены. Попробуйте изменить название или тип модели." />
+      )}
 
-            {m.description && <div className="opacity-70 line-clamp-3 mb-2">{m.description}</div>}
+      {!showSkeleton && !showEmpty && (
+        <div className="flex-1 overflow-y-auto grid gap-8 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 pb-4">
+          {models.map((m) => (
+            <ModelCard
+              key={m.id}
+              model={m}
+              onOpenChat={() => {
+                const url = new URL('/chat', window.location.origin);
+                url.searchParams.set('model', m.id);
+                window.location.href = url.toString();
+              }}
+              onOpenProviderPage={() => {
+                const url = `https://openrouter.ai/models/${encodeURIComponent(m.id)}`;
+                window.open(url, '_blank', 'noopener,noreferrer');
+              }}
+            />
+          ))}
+        </div>
+      )}
 
-            <div className="flex flex-wrap gap-4 mb-2 opacity-70">
-              {(m as any).imageOutput && <span>🖼 image</span>}
-              {(m as any).vision && <span>👁 vision</span>}
-              {(m as any).video && <span>🎬 video</span>}
-              {(m as any).search && <span>🔍 search</span>}
-              {(m as any).files && <span>📎 files</span>}
-            </div>
-
-            <div className="mt-auto flex gap-2 pt-2 border-t border-dashed">
-              {/* eslint-disable-next-line react/button-has-type */}
-              <button
-                className="flex-1 rounded-lg border px-3 py-1 text-xs"
-                onClick={() => {
-                  const url = new URL('/chat', window.location.origin);
-                  url.searchParams.set('model', m.id);
-                  window.location.href = url.toString();
-                }}
-              >
-                Открыть в чате
-              </button>
-              {/* eslint-disable-next-line react/button-has-type */}
-              <button
-                className="rounded-lg border px-3 py-1 text-xs"
-                onClick={() => {
-                  const url = `https://openrouter.ai/models/${encodeURIComponent(m.id)}`;
-                  window.open(url, '_blank', 'noopener,noreferrer');
-                }}
-              >
-                На OpenRouter
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+      {loading && !showSkeleton && (
+        <div className="text-[10px] opacity-60">Обновляем список моделей…</div>
+      )}
     </Flexbox>
   );
 });

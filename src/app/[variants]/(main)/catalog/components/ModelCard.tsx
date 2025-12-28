@@ -1,0 +1,89 @@
+'use client';
+
+import type { FC } from 'react';
+
+export type ModelTag = { name: string; slug: string };
+
+export type CatalogModel = {
+  description?: string | null;
+  iconUrl?: string | null;
+  id: string;
+  name: string;
+  provider?: string | null;
+  tags?: ModelTag[];
+};
+
+interface Props {
+  model: CatalogModel;
+  onOpenChat?: () => void;
+  onOpenProviderPage?: () => void;
+}
+
+export const ModelCard: FC<Props> = ({ model, onOpenChat, onOpenProviderPage }) => {
+  return (
+    <div
+      className="
+        group flex flex-col rounded-2xl border px-4 py-3 text-xs
+        transition-shadow transition-transform hover:shadow-sm hover:-translate-y-[1px]
+        bg-[rgba(255,255,255,0.02)]
+      "
+    >
+      {/* header */}
+      <div className="flex items-start gap-3 mb-2">
+        {model.iconUrl && (
+          <img alt={model.name} className="w-8 h-8 rounded-xl object-cover" src={model.iconUrl} />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="font-medium truncate text-sm">{model.name}</div>
+              {model.provider && (
+                <div className="text-[10px] opacity-60 mt-0.5">Провайдер: {model.provider}</div>
+              )}
+            </div>
+          </div>
+
+          {model.description && (
+            <div className="opacity-70 text-[11px] mt-1 line-clamp-3">{model.description}</div>
+          )}
+        </div>
+      </div>
+
+      {/* tags */}
+      {model.tags && model.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {model.tags.map((t) => (
+            <span
+              className="
+                px-2 py-0.5 rounded-full border text-[10px]
+                bg-[rgba(0,0,0,0.02)] group-hover:bg-[rgba(0,0,0,0.05)]
+              "
+              key={t.slug}
+            >
+              {t.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* actions */}
+      <div className="mt-auto flex gap-2 pt-2 border-t border-dashed">
+        {onOpenProviderPage && (
+          // eslint-disable-next-line react/button-has-type
+          <button
+            className="rounded-lg border px-3 py-1 text-[11px] flex-1"
+            onClick={onOpenProviderPage}
+          >
+            Открыть на OpenRouter
+          </button>
+        )}
+        {onOpenChat && (
+          // eslint-disable-next-line react/button-has-type
+          <button className="rounded-lg border px-3 py-1 text-[11px] flex-1" onClick={onOpenChat}>
+            Открыть модель в чате
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};

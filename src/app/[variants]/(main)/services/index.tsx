@@ -3,25 +3,41 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { Flexbox } from 'react-layout-kit';
 
-export type NeuralServiceDto = {
-  iconUrl?: string | null;
-  id: string;
-  isActive: boolean;
-  name: string;
-  shortDesc?: string | null;
-  slug: string;
-  source?: string | null;
-  tags?: { name: string; slug: string }[];
-  url?: string | null;
-};
+import {
+  type Service as NeuralServiceDto,
+  ServiceCard,
+} from '@/app/[variants]/(main)/services/components/ServiceCard';
 
 interface ServicesPageInnerProps {
   mobile?: boolean;
 }
 
-const ServicesPageInner = memo<ServicesPageInnerProps>(({ mobile }) => {
-  //const { t } = useTranslation('common');
+const SkeletonCard = () => (
+  <div className="flex flex-col rounded-2xl border px-4 py-3 text-xs animate-pulse">
+    <div className="flex items-start gap-3 mb-2">
+      <div className="w-8 h-8 rounded-xl bg-[rgba(0,0,0,0.06)]" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3 w-32 rounded bg-[rgba(0,0,0,0.06)]" />
+        <div className="h-2 w-24 rounded bg-[rgba(0,0,0,0.04)]" />
+        <div className="h-2 w-full rounded bg-[rgba(0,0,0,0.04)]" />
+        <div className="h-2 w-3/4 rounded bg-[rgba(0,0,0,0.04)]" />
+      </div>
+    </div>
+    <div className="flex gap-2 mt-2">
+      <div className="h-6 flex-1 rounded-lg bg-[rgba(0,0,0,0.04)]" />
+      <div className="h-6 flex-1 rounded-lg bg-[rgba(0,0,0,0.04)]" />
+    </div>
+  </div>
+);
 
+const EmptyState = ({ message }: { message: string }) => (
+  <Flexbox align="center" gap={8} height="100%" justify="center" padding={24}>
+    <div className="text-3xl">🧩</div>
+    <div className="text-sm opacity-80 text-center max-w-xs">{message}</div>
+  </Flexbox>
+);
+
+const ServicesPageInner = memo<ServicesPageInnerProps>(({ mobile }) => {
   const [items, setItems] = useState<NeuralServiceDto[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -30,6 +46,7 @@ const ServicesPageInner = memo<ServicesPageInnerProps>(({ mobile }) => {
 
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [favLoading, setFavLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // загрузка сервисов
   useEffect(() => {
@@ -37,6 +54,7 @@ const ServicesPageInner = memo<ServicesPageInnerProps>(({ mobile }) => {
 
     const load = async () => {
       setLoading(true);
+      setError(null);
       try {
         const params = new URLSearchParams();
         if (search) params.set('search', search);
@@ -45,12 +63,21 @@ const ServicesPageInner = memo<ServicesPageInnerProps>(({ mobile }) => {
         const res = await fetch(`/api/neural/services?${params.toString()}`, {
           signal: controller.signal,
         });
+
+        if (!res.ok) {
+          setError('Не удалось загрузить список сервисов');
+          setItems([]);
+          return;
+        }
+
         const json = await res.json();
         setItems(json.items ?? []);
       } catch (e) {
         if (!(e instanceof DOMException && e.name === 'AbortError')) {
           console.error('Failed to load neural services', e);
+          setError('Ошибка сети при загрузке сервисов');
         }
+        setItems([]);
       } finally {
         setLoading(false);
       }
@@ -73,8 +100,12 @@ const ServicesPageInner = memo<ServicesPageInnerProps>(({ mobile }) => {
         });
 
         if (res.status === 401) {
-          // пользователь не залогинен — просто не показываем избранное
           setFavoriteIds(new Set());
+          return;
+        }
+
+        if (!res.ok) {
+          console.error('Failed to load favorites', res.status);
           return;
         }
 
@@ -104,7 +135,7 @@ const ServicesPageInner = memo<ServicesPageInnerProps>(({ mobile }) => {
       });
 
       if (res.status === 401) {
-        // Можно показать toast "Нужен вход"
+        // TODO: показать toast "Войдите, чтобы сохранять избранное"
         console.warn('Toggle favorite: unauthorized');
         return;
       }
@@ -124,7 +155,6 @@ const ServicesPageInner = memo<ServicesPageInnerProps>(({ mobile }) => {
     }
   };
 
-  // список уникальных тегов
   const tags = useMemo(() => {
     const map = new Map<string, string>();
     items.forEach((s) => {
@@ -135,19 +165,20 @@ const ServicesPageInner = memo<ServicesPageInnerProps>(({ mobile }) => {
     return Array.from(map.entries()).map(([slug, name]) => ({ name, slug }));
   }, [items]);
 
-  const filteredItems = items; // фильтрация уже на бэке по search/tag
+  const showSkeleton = loading && !items.length && !error;
+  const showEmpty = !loading && !error && items.length === 0;
 
   return (
     <Flexbox gap={mobile ? 8 : 12} height="100%" padding={mobile ? 12 : 16}>
-      {/* Заголовок */}
       <Flexbox gap={4}>
         <div className="text-base font-medium">Нейросервисы</div>
         <div className="text-xs opacity-70">
-          Каталог внешних сервисов (ChatGPT, Midjourney и т.д.) с переходом в чат и на сайт сервиса.
+          Каталог внешних AI-сервисов (ChatGPT, Midjourney и др.), которые можно открыть и обсуждать
+          прямо из lobby-чата.
         </div>
       </Flexbox>
 
-      {/* Поиск + фильтр по тегу */}
+      {/* Поиск + теги */}
       <Flexbox align="center" direction="horizontal" gap={8} wrap="wrap">
         <input
           className="flex-1 min-w-[160px] rounded-lg border px-3 py-2 text-xs bg-transparent"
@@ -169,87 +200,51 @@ const ServicesPageInner = memo<ServicesPageInnerProps>(({ mobile }) => {
         </select>
       </Flexbox>
 
-      {(loading || favLoading) && <div className="text-xs opacity-70">Загружаем данные…</div>}
+      {error && <div className="text-[11px] text-red-500">{error}</div>}
 
-      {!loading && filteredItems.length === 0 && (
-        <div className="text-xs opacity-70">
-          Ничего не найдено. Попробуйте изменить запрос или тег.
+      {showSkeleton && (
+        <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 pb-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
         </div>
       )}
 
-      {/* Список сервисов */}
-      <div className="flex-1 overflow-y-auto grid gap-8 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 pb-4">
-        {filteredItems.map((s) => {
-          const isFav = favoriteIds.has(s.id);
+      {showEmpty && (
+        <EmptyState message="По текущему запросу сервисы не найдены. Попробуйте изменить текст поиска или выбрать другой тег." />
+      )}
 
-          return (
-            <div className="flex flex-col rounded-xl border px-3 py-3 text-xs" key={s.id}>
-              <div className="flex items-start gap-2 mb-2">
-                {s.iconUrl && (
-                  <img alt={s.name} className="w-6 h-6 rounded-md object-cover" src={s.iconUrl} />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <div className="font-medium truncate">{s.name}</div>
-                    <button
-                      aria-label={isFav ? 'Убрать из избранного' : 'В избранное'}
-                      className="text-lg leading-none"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void toggleFavorite(s.id);
-                      }}
-                      type="button"
-                    >
-                      {isFav ? '★' : '☆'}
-                    </button>
-                  </div>
-                  {s.shortDesc && <div className="opacity-70 line-clamp-3">{s.shortDesc}</div>}
-                </div>
-              </div>
+      {!showSkeleton && !showEmpty && (
+        <div className="flex-1 overflow-y-auto grid gap-8 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 pb-4">
+          {items.map((s) => {
+            const isFav = favoriteIds.has(s.id);
 
-              {s.tags && s.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {s.tags.map((t) => (
-                    <span
-                      className="px-2 py-1 rounded-full border text-[10px] opacity-80"
-                      key={t.slug}
-                    >
-                      {t.name}
-                    </span>
-                  ))}
-                </div>
-              )}
+            return (
+              <ServiceCard
+                isFavorite={isFav}
+                key={s.id}
+                onOpenChat={() => {
+                  const url = new URL('/chat', window.location.origin);
+                  url.searchParams.set('service', s.slug);
+                  window.location.href = url.toString();
+                }}
+                onOpenDetails={() => {
+                  window.location.href = `/services/${encodeURIComponent(s.slug)}`;
+                }}
+                onOpenSite={
+                  s.url ? () => window.open(s.url!, '_blank', 'noopener,noreferrer') : undefined
+                }
+                onToggleFavorite={() => void toggleFavorite(s.id)}
+                service={s}
+              />
+            );
+          })}
+        </div>
+      )}
 
-              <div className="mt-auto flex gap-2 pt-2 border-t border-dashed">
-                {s.url && (
-                  // eslint-disable-next-line react/button-has-type
-                  <button
-                    className="flex-1 rounded-lg border px-3 py-1 text-xs"
-                    onClick={() => {
-                      window.open(s.url!, '_blank', 'noopener,noreferrer');
-                    }}
-                  >
-                    Открыть сайт
-                  </button>
-                )}
-
-                {/* eslint-disable-next-line react/button-has-type */}
-                <button
-                  className="flex-1 rounded-lg border px-3 py-1 text-xs"
-                  onClick={() => {
-                    // тут вариант №2 из твоего текста: "обсуждение в lobby"
-                    const url = new URL('/chat', window.location.origin);
-                    url.searchParams.set('service', s.slug);
-                    window.location.href = url.toString();
-                  }}
-                >
-                  Обсудить в чате
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {(loading || favLoading) && !showSkeleton && (
+        <div className="text-[10px] opacity-60">Обновляем данные…</div>
+      )}
     </Flexbox>
   );
 });
