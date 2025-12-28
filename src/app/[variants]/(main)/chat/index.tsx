@@ -4,6 +4,8 @@ import { useSearchParams } from 'next/navigation';
 import { memo } from 'react';
 import { Flexbox } from 'react-layout-kit';
 
+import { NeuralGuideWidget } from '@/app/[variants]/(main)/chat/NeuralGuideWidget';
+
 import { DesktopWorkspace, MobileWorkspace } from './components/WorkspaceLayout';
 import TelemetryNotification from './components/features/TelemetryNotification';
 import PageTitle from './features/PageTitle';
@@ -44,6 +46,7 @@ const MobileChatPage = memo(() => {
     <>
       <PageTitle />
       <ModelFromQueryBanner />
+      <NeuralGuideWidget />
       <MobileWorkspace />
       <TelemetryNotification mobile={true} />
     </>
@@ -55,6 +58,7 @@ const DesktopChatPage = memo(() => {
     <>
       <PageTitle />
       <ModelFromQueryBanner />
+      <NeuralGuideWidget />
       <DesktopWorkspace />
       <TelemetryNotification mobile={false} />
     </>
