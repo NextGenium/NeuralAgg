@@ -36,6 +36,10 @@ const runMigrations = async () => {
   process.exit(0);
 };
 
+//console.log('DATABASE_URL at runtime:', process.env.DATABASE_URL);
+//console.log('DATABASE_DRIVER:', process.env.DATABASE_DRIVER);
+//console.log('NEXT_PUBLIC_IS_DESKTOP_APP:', process.env.NEXT_PUBLIC_IS_DESKTOP_APP);
+
 let connectionString = process.env.DATABASE_URL;
 
 // only migrate database if the connection string is available

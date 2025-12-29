@@ -589,6 +589,74 @@ table messages_files {
   }
 }
 
+table neural_favorite_models {
+  model_id text [not null]
+  user_id text [not null]
+  accessed_at "timestamp with time zone" [not null, default: `now()`]
+  created_at "timestamp with time zone" [not null, default: `now()`]
+  updated_at "timestamp with time zone" [not null, default: `now()`]
+
+  indexes {
+    (user_id, model_id) [pk]
+    user_id [name: 'neural_favorite_models_user_idx']
+  }
+}
+
+table neural_favorite_services {
+  service_id text [not null]
+  user_id text [not null]
+  accessed_at "timestamp with time zone" [not null, default: `now()`]
+  created_at "timestamp with time zone" [not null, default: `now()`]
+  updated_at "timestamp with time zone" [not null, default: `now()`]
+
+  indexes {
+    (user_id, service_id) [pk]
+    user_id [name: 'neural_favorite_services_user_idx']
+  }
+}
+
+table neural_service_tags {
+  service_id text [not null]
+  tag_id text [not null]
+
+  indexes {
+    (service_id, tag_id) [pk]
+  }
+}
+
+table neural_services {
+  icon_url text
+  id text [pk, not null]
+  is_active boolean [not null, default: true]
+  name varchar(255) [not null]
+  short_desc text
+  slug varchar(255) [not null, unique]
+  source varchar(255) [default: 'external']
+  url text
+  accessed_at "timestamp with time zone" [not null, default: `now()`]
+  created_at "timestamp with time zone" [not null, default: `now()`]
+  updated_at "timestamp with time zone" [not null, default: `now()`]
+
+  indexes {
+    is_active [name: 'neural_services_active_idx']
+    slug [name: 'neural_services_slug_idx']
+  }
+}
+
+table neural_tags {
+  description text
+  id text [pk, not null]
+  name varchar(255) [not null, unique]
+  slug varchar(255) [not null, unique]
+  accessed_at "timestamp with time zone" [not null, default: `now()`]
+  created_at "timestamp with time zone" [not null, default: `now()`]
+  updated_at "timestamp with time zone" [not null, default: `now()`]
+
+  indexes {
+    slug [name: 'neural_tags_slug_idx']
+  }
+}
+
 table nextauth_accounts {
   access_token text
   expires_at integer
