@@ -17,4 +17,5 @@ export * from './relations';
 export * from './session';
 export * from './topic';
 export * from './user';
+export * from './userCredits';
 export * from './userMemories';
