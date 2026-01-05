@@ -1,5 +1,5 @@
-//import { getModelCost } from './modelPricing';
-//import { UserCreditsService } from './userCredits';
+import { getModelCost } from './modelPricing';
+import { UserCreditsService } from './userCredits';
 
 export class InsufficientDiamondsError extends Error {
   diamonds: number;
@@ -11,16 +11,16 @@ export class InsufficientDiamondsError extends Error {
   }
 }
 
-//export const chargeForModelCall = async (userId: string, model: string) => {
-//  const cost = getModelCost(model);
-//  if (cost <= 0) return;
+export const chargeForModelCall = async (userId: string, model: string) => {
+  const cost = getModelCost(model);
+  if (cost <= 0) return;
 
-//  try {
-//    await UserCreditsService.charge(userId, cost);
-//  } catch (e: any) {
-//   if (e?.code === 'INSUFFICIENT_DIAMONDS') {
-//      throw new InsufficientDiamondsError(e.diamonds ?? 0);
-//    }
-//    throw e;
-// }
-//};
+  try {
+    await UserCreditsService.charge(userId, cost);
+  } catch (e: any) {
+    if (e?.code === 'INSUFFICIENT_DIAMONDS') {
+      throw new InsufficientDiamondsError(e.diamonds ?? 0);
+    }
+    throw e;
+  }
+};

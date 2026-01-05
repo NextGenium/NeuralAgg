@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import { auth } from '@/auth';
 
@@ -6,7 +6,7 @@ import { auth } from '@/auth';
  * Возвращает userId авторизованного пользователя.
  * Если пользователь не авторизован — кидает ошибку USER_NOT_AUTHENTICATED.
  */
-export const getRequestUserIdOrThrow = async (req: NextRequest): Promise<string> => {
+export const getRequestUserIdOrThrow = async (req: Request): Promise<string> => {
   // BetterAuth: получаем сессию по заголовкам запроса
   const session = await auth.api.getSession({
     headers: req.headers,

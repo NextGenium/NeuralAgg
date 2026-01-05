@@ -3,6 +3,7 @@
 import { ChatHeader } from '@lobehub/ui/mobile';
 import { memo, useState } from 'react';
 
+import { DiamondsBadge } from '@/app/[variants]/(main)/chat/components/DiamondsBadge';
 import { INBOX_SESSION_ID } from '@/const/session';
 import { useQueryRoute } from '@/hooks/useQueryRoute';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
@@ -25,6 +26,7 @@ const MobileHeader = memo(() => {
       }
       right={
         <>
+          <DiamondsBadge />
           <ShareButton mobile open={open} setOpen={setOpen} />
           {isAgentEditable && <SettingButton mobile />}
         </>

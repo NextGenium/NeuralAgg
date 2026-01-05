@@ -1,3 +1,4 @@
+import { chargeForModelCall } from '@/server/billing/changeForModel';
 import { NeuralCatalogService } from '@/services/neuralCatalog';
 
 export interface NeuralRecommendationItem {
@@ -48,7 +49,11 @@ const extractJson = (text: string): any | null => {
   }
 };
 
-export const recommendServices = async (query: string): Promise<NeuralRecommendationResult> => {
+// ⚠️ теперь принимаем userId (для списания алмазов)
+export const recommendServices = async (
+  query: string,
+  userId?: string,
+): Promise<NeuralRecommendationResult> => {
   const services = await NeuralCatalogService.listServices({ activeOnly: true });
 
   if (!services.length) {
@@ -58,7 +63,7 @@ export const recommendServices = async (query: string): Promise<NeuralRecommenda
   const servicesSummary = services
     .map((s) => {
       const tags = (s.tags ?? []).map((t) => t.slug).join(',');
-      const desc = s.shortDesc?.replace(/\s+/g, '').slice(0, 200) ?? '';
+      const desc = s.shortDesc?.replace(/\s+/g, ' ').slice(0, 200) ?? '';
       return `${s.slug} | ${s.name} | tags: ${tags || '-'} | ${desc}`;
     })
     .join('\n');
@@ -91,18 +96,13 @@ ${servicesSummary}
     }
   ]
 }
-
-Никакого текста кроме JSON, никаких комментариев.
-  `.trim();
+`.trim();
 
   const userPrompt = `Запрос пользователя: "${query}"`;
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
-    console.warn(
-      'OPENROUTER_API_KEY is not set; recommendServices will fallback to simple scoring.',
-    );
-  }
 
+  const apiKey = process.env.OPENROUTER_API_KEY;
+
+  // если ключа нет — fallback без модели и без списания алмазов
   if (!apiKey) {
     const q = query.toLowerCase();
     const scored = services
@@ -143,7 +143,12 @@ ${servicesSummary}
   const model =
     process.env.OPENROUTER_RECOMMENDER_MODEL || 'openrouter/anthropic/claude-3.5-sonnet';
 
-  const response = await fetch('htttps://openrouter.ai/api/v1/chat/completions', {
+  // 💎 списание алмазов за запрос к рекомендателю (если есть userId)
+  if (userId) {
+    await chargeForModelCall(userId, model);
+  }
+
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     body: JSON.stringify({
       messages: [
         { content: systemPrompt, role: 'system' },
@@ -173,7 +178,6 @@ ${servicesSummary}
   const parsed = extractJson(rawText) ?? { items: [] };
   const items: NeuralRecommendationItem[] = Array.isArray(parsed.items) ? parsed.items : [];
 
-  // 4. Подмешиваем данные о сервисах
   const mapBySlug = new Map(services.map((s) => [s.slug, s]));
 
   const enriched = items

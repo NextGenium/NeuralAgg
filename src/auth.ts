@@ -18,6 +18,7 @@ import {
 import { initBetterAuthSSOProviders } from '@/libs/better-auth/sso';
 import { createSecondaryStorage, getTrustedOrigins } from '@/libs/better-auth/utils/config';
 import { parseSSOProviders } from '@/libs/better-auth/utils/server';
+import { UserCreditsService } from '@/server/billing/userCredits';
 import { EmailService } from '@/server/services/email';
 import { UserService } from '@/server/services/user';
 
@@ -141,12 +142,19 @@ export const auth = betterAuth({
             email: user.email,
             id: user.id,
             username: user.username as string | null,
-            // TODO: if add phone plugin, we should fill phone here
           });
+
+          // 💎 Инициализируем стартовый баланс алмазов для нового пользователя
+          try {
+            await UserCreditsService.initStarterForUser(user.id);
+          } catch (e) {
+            console.error('[better-auth] initStarterForUser failed', e);
+          }
         },
       },
     },
   },
+
   user: {
     additionalFields: {
       username: {
