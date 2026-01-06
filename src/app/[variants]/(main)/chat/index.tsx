@@ -5,6 +5,7 @@ import { memo } from 'react';
 import { Flexbox } from 'react-layout-kit';
 
 import { NeuralGuideWidget } from '@/app/[variants]/(main)/chat/NeuralGuideWidget';
+import MultiModelComparePanel from '@/app/[variants]/(main)/chat/components/features/MultiModelComparePanel';
 
 import { DesktopWorkspace, MobileWorkspace } from './components/WorkspaceLayout';
 import TelemetryNotification from './components/features/TelemetryNotification';
@@ -46,6 +47,7 @@ const MobileChatPage = memo(() => {
     <>
       <PageTitle />
       <ModelFromQueryBanner />
+      <MultiModelComparePanel />
       <NeuralGuideWidget />
       <MobileWorkspace />
       <TelemetryNotification mobile={true} />
@@ -58,6 +60,7 @@ const DesktopChatPage = memo(() => {
     <>
       <PageTitle />
       <ModelFromQueryBanner />
+      <MultiModelComparePanel />
       <NeuralGuideWidget />
       <DesktopWorkspace />
       <TelemetryNotification mobile={false} />
