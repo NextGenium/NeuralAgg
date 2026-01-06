@@ -18,7 +18,7 @@ import {
 import { initBetterAuthSSOProviders } from '@/libs/better-auth/sso';
 import { createSecondaryStorage, getTrustedOrigins } from '@/libs/better-auth/utils/config';
 import { parseSSOProviders } from '@/libs/better-auth/utils/server';
-import { UserCreditsService } from '@/server/billing/userCredits';
+import { UserCreditsService } from '@/server/services/billing/userCredits';
 import { EmailService } from '@/server/services/email';
 import { UserService } from '@/server/services/user';
 

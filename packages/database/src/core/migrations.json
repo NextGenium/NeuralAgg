@@ -648,32 +648,32 @@
   },
   {
     "sql": [
-      "CREATE TABLE IF NOT EXISTS \"user_memories\" (\n\t\"id\" varchar(255) PRIMARY KEY NOT NULL,\n\t\"user_id\" text,\n\t\"memory_category\" varchar(255),\n\t\"memory_layer\" varchar(255),\n\t\"memory_type\" varchar(255),\n\t\"title\" varchar(255),\n\t\"summary\" text,\n\t\"summary_vector_1024\" vector(1024),\n\t\"details\" text,\n\t\"details_vector_1024\" vector(1024),\n\t\"status\" varchar(255),\n\t\"accessed_count\" bigint DEFAULT 0,\n\t\"last_accessed_at\" timestamp with time zone NOT NULL,\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
-      "\nCREATE TABLE IF NOT EXISTS \"user_memories_contexts\" (\n\t\"id\" varchar(255) PRIMARY KEY NOT NULL,\n\t\"user_memory_ids\" jsonb,\n\t\"labels\" jsonb,\n\t\"extracted_labels\" jsonb,\n\t\"associated_objects\" jsonb,\n\t\"associated_subjects\" jsonb,\n\t\"title\" text,\n\t\"title_vector\" vector(1024),\n\t\"description\" text,\n\t\"description_vector\" vector(1024),\n\t\"type\" varchar(255),\n\t\"current_status\" text,\n\t\"score_impact\" numeric DEFAULT 0,\n\t\"score_urgency\" numeric DEFAULT 0,\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
-      "\nCREATE TABLE IF NOT EXISTS \"user_memories_experiences\" (\n\t\"id\" varchar(255) PRIMARY KEY NOT NULL,\n\t\"user_memory_id\" text,\n\t\"labels\" jsonb,\n\t\"extracted_labels\" jsonb,\n\t\"type\" varchar(255),\n\t\"situation\" text,\n\t\"situation_vector\" vector(1024),\n\t\"reasoning\" text,\n\t\"possible_outcome\" text,\n\t\"action\" text,\n\t\"action_vector\" vector(1024),\n\t\"key_learning\" text,\n\t\"key_learning_vector\" vector(1024),\n\t\"metadata\" jsonb,\n\t\"score_confidence\" real DEFAULT 0,\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
-      "\nCREATE TABLE IF NOT EXISTS \"user_memories_identities\" (\n\t\"current_focuses\" text,\n\t\"description\" text,\n\t\"description_vector\" vector(1024),\n\t\"experience\" text,\n\t\"extracted_labels\" jsonb,\n\t\"id\" varchar(255) PRIMARY KEY NOT NULL,\n\t\"labels\" jsonb,\n\t\"relationship\" text,\n\t\"role\" text,\n\t\"type\" varchar(255),\n\t\"user_memory_id\" text,\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
-      "\nCREATE TABLE IF NOT EXISTS \"user_memories_preferences\" (\n\t\"id\" varchar(255) PRIMARY KEY NOT NULL,\n\t\"context_id\" varchar(255),\n\t\"user_memory_id\" varchar(255),\n\t\"labels\" jsonb,\n\t\"extracted_labels\" jsonb,\n\t\"extracted_scopes\" jsonb,\n\t\"conclusion_directives\" text,\n\t\"conclusion_directives_vector\" vector(1024),\n\t\"type\" varchar(255),\n\t\"suggestions\" text,\n\t\"score_priority\" numeric DEFAULT 0,\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
+      "CREATE TABLE IF NOT EXISTS \"user_memories\" (\n\t\"id\" varchar(255) PRIMARY KEY NOT NULL,\n\t\"user_id\" text,\n\t\"memory_category\" varchar(255),\n\t\"memory_layer\" varchar(255),\n\t\"memory_type\" varchar(255),\n\t\"title\" varchar(255),\n\t\"summary\" text,\n\t\"summary_vector_1024\" bytea,\n\t\"details\" text,\n\t\"details_vector_1024\" bytea,\n\t\"status\" varchar(255),\n\t\"accessed_count\" bigint DEFAULT 0,\n\t\"last_accessed_at\" timestamp with time zone NOT NULL,\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
+      "\nCREATE TABLE IF NOT EXISTS \"user_memories_contexts\" (\n\t\"id\" varchar(255) PRIMARY KEY NOT NULL,\n\t\"user_memory_ids\" jsonb,\n\t\"labels\" jsonb,\n\t\"extracted_labels\" jsonb,\n\t\"associated_objects\" jsonb,\n\t\"associated_subjects\" jsonb,\n\t\"title\" text,\n\t\"title_vector\" bytea,\n\t\"description\" text,\n\t\"description_vector\" bytea,\n\t\"type\" varchar(255),\n\t\"current_status\" text,\n\t\"score_impact\" numeric DEFAULT 0,\n\t\"score_urgency\" numeric DEFAULT 0,\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
+      "\nCREATE TABLE IF NOT EXISTS \"user_memories_experiences\" (\n\t\"id\" varchar(255) PRIMARY KEY NOT NULL,\n\t\"user_memory_id\" text,\n\t\"labels\" jsonb,\n\t\"extracted_labels\" jsonb,\n\t\"type\" varchar(255),\n\t\"situation\" text,\n\t\"situation_vector\" bytea,\n\t\"reasoning\" text,\n\t\"possible_outcome\" text,\n\t\"action\" text,\n\t\"action_vector\" bytea,\n\t\"key_learning\" text,\n\t\"key_learning_vector\" bytea,\n\t\"metadata\" jsonb,\n\t\"score_confidence\" real DEFAULT 0,\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
+      "\nCREATE TABLE IF NOT EXISTS \"user_memories_identities\" (\n\t\"current_focuses\" text,\n\t\"description\" text,\n\t\"description_vector\" bytea,\n\t\"experience\" text,\n\t\"extracted_labels\" jsonb,\n\t\"id\" varchar(255) PRIMARY KEY NOT NULL,\n\t\"labels\" jsonb,\n\t\"relationship\" text,\n\t\"role\" text,\n\t\"type\" varchar(255),\n\t\"user_memory_id\" text,\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
+      "\nCREATE TABLE IF NOT EXISTS \"user_memories_preferences\" (\n\t\"id\" varchar(255) PRIMARY KEY NOT NULL,\n\t\"context_id\" varchar(255),\n\t\"user_memory_id\" varchar(255),\n\t\"labels\" jsonb,\n\t\"extracted_labels\" jsonb,\n\t\"extracted_scopes\" jsonb,\n\t\"conclusion_directives\" text,\n\t\"conclusion_directives_vector\" bytea,\n\t\"type\" varchar(255),\n\t\"suggestions\" text,\n\t\"score_priority\" numeric DEFAULT 0,\n\t\"accessed_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"created_at\" timestamp with time zone DEFAULT now() NOT NULL,\n\t\"updated_at\" timestamp with time zone DEFAULT now() NOT NULL\n);\n",
       "\nALTER TABLE \"user_memories\" ADD CONSTRAINT \"user_memories_user_id_users_id_fk\" FOREIGN KEY (\"user_id\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE cascade ON UPDATE no action;",
       "\nALTER TABLE \"user_memories_experiences\" ADD CONSTRAINT \"user_memories_experiences_user_memory_id_user_memories_id_fk\" FOREIGN KEY (\"user_memory_id\") REFERENCES \"public\".\"user_memories\"(\"id\") ON DELETE cascade ON UPDATE no action;",
       "\nALTER TABLE \"user_memories_identities\" ADD CONSTRAINT \"user_memories_identities_user_memory_id_user_memories_id_fk\" FOREIGN KEY (\"user_memory_id\") REFERENCES \"public\".\"user_memories\"(\"id\") ON DELETE cascade ON UPDATE no action;",
       "\nALTER TABLE \"user_memories_preferences\" ADD CONSTRAINT \"user_memories_preferences_context_id_user_memories_contexts_id_fk\" FOREIGN KEY (\"context_id\") REFERENCES \"public\".\"user_memories_contexts\"(\"id\") ON DELETE cascade ON UPDATE no action;",
       "\nALTER TABLE \"user_memories_preferences\" ADD CONSTRAINT \"user_memories_preferences_user_memory_id_user_memories_id_fk\" FOREIGN KEY (\"user_memory_id\") REFERENCES \"public\".\"user_memories\"(\"id\") ON DELETE cascade ON UPDATE no action;",
-      "\nCREATE INDEX \"user_memories_summary_vector_1024_index\" ON \"user_memories\" USING hnsw (\"summary_vector_1024\" vector_cosine_ops);",
-      "\nCREATE INDEX \"user_memories_details_vector_1024_index\" ON \"user_memories\" USING hnsw (\"details_vector_1024\" vector_cosine_ops);",
-      "\nCREATE INDEX \"user_memories_contexts_title_vector_index\" ON \"user_memories_contexts\" USING hnsw (\"title_vector\" vector_cosine_ops);",
-      "\nCREATE INDEX \"user_memories_contexts_description_vector_index\" ON \"user_memories_contexts\" USING hnsw (\"description_vector\" vector_cosine_ops);",
-      "\nCREATE INDEX \"user_memories_contexts_type_index\" ON \"user_memories_contexts\" USING btree (\"type\");",
-      "\nCREATE INDEX \"user_memories_experiences_situation_vector_index\" ON \"user_memories_experiences\" USING hnsw (\"situation_vector\" vector_cosine_ops);",
-      "\nCREATE INDEX \"user_memories_experiences_action_vector_index\" ON \"user_memories_experiences\" USING hnsw (\"action_vector\" vector_cosine_ops);",
-      "\nCREATE INDEX \"user_memories_experiences_key_learning_vector_index\" ON \"user_memories_experiences\" USING hnsw (\"key_learning_vector\" vector_cosine_ops);",
-      "\nCREATE INDEX \"user_memories_experiences_type_index\" ON \"user_memories_experiences\" USING btree (\"type\");",
-      "\nCREATE INDEX \"user_memories_identities_description_vector_index\" ON \"user_memories_identities\" USING hnsw (\"description_vector\" vector_cosine_ops);",
-      "\nCREATE INDEX \"user_memories_identities_type_index\" ON \"user_memories_identities\" USING btree (\"type\");",
-      "\nCREATE INDEX \"user_memories_preferences_conclusion_directives_vector_index\" ON \"user_memories_preferences\" USING hnsw (\"conclusion_directives_vector\" vector_cosine_ops);\n"
+      "\n--CREATE INDEX \"user_memories_summary_vector_1024_index\" ON \"user_memories\" USING btree (\"summary_vector_1024\" vector_cosine_ops);",
+      "\n--CREATE INDEX \"user_memories_details_vector_1024_index\" ON \"user_memories\" USING btree (\"details_vector_1024\" vector_cosine_ops);",
+      "\n--CREATE INDEX \"user_memories_contexts_title_vector_index\" ON \"user_memories_contexts\" USING btree (\"title_vector\" vector_cosine_ops);",
+      "\n--CREATE INDEX \"user_memories_contexts_description_vector_index\" ON \"user_memories_contexts\" USING btree (\"description_vector\" vector_cosine_ops);",
+      "\n--CREATE INDEX \"user_memories_contexts_type_index\" ON \"user_memories_contexts\" USING btree (\"type\");",
+      "\n--CREATE INDEX \"user_memories_experiences_situation_vector_index\" ON \"user_memories_experiences\" USING btree (\"situation_vector\" vector_cosine_ops);",
+      "\n--CREATE INDEX \"user_memories_experiences_action_vector_index\" ON \"user_memories_experiences\" USING btree (\"action_vector\" vector_cosine_ops);",
+      "\n--CREATE INDEX \"user_memories_experiences_key_learning_vector_index\" ON \"user_memories_experiences\" USING btree (\"key_learning_vector\" vector_cosine_ops);",
+      "\n--CREATE INDEX \"user_memories_experiences_type_index\" ON \"user_memories_experiences\" USING btree (\"type\");",
+      "\n--CREATE INDEX \"user_memories_identities_description_vector_index\" ON \"user_memories_identities\" USING btree (\"description_vector\" vector_cosine_ops);",
+      "\n--CREATE INDEX \"user_memories_identities_type_index\" ON \"user_memories_identities\" USING btree (\"type\");",
+      "\n--CREATE INDEX \"user_memories_preferences_conclusion_directives_vector_index\" ON \"user_memories_preferences\" USING btree (\"conclusion_directives_vector\" vector_cosine_ops);\n"
     ],
     "bps": true,
     "folderMillis": 1760086906862,
-    "hash": "4bdc6505797d7a33b622498c138cfd47f637239f6905e1c484cd01d9d5f21d6b"
+    "hash": "889c53d0a5e1576daeff255fce4d11d684e858fe8b6c3f1b71db08cf00b3b599"
   },
   {
     "sql": ["ALTER TABLE \"user_settings\" ADD COLUMN IF NOT EXISTS \"image\" jsonb;"],
@@ -1075,5 +1075,19 @@
     "bps": true,
     "folderMillis": 1767010285418,
     "hash": "3bfd4581037c1e3a6a256d9cb73d59fbddbe7e6affa69cf0dd2b9a969f8653e2"
+  },
+  {
+    "sql": [
+      "CREATE TYPE \"public\".\"user_tier\" AS ENUM('starter', 'creator', 'admin');",
+      "\nCREATE TABLE \"neutral_chain_steps\" (\n\t\"chain_id\" uuid NOT NULL,\n\t\"created_at\" timestamp DEFAULT now() NOT NULL,\n\t\"id\" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"index\" integer NOT NULL,\n\t\"models\" jsonb NOT NULL,\n\t\"prompt\" text NOT NULL,\n\t\"results\" jsonb NOT NULL\n);\n",
+      "\nCREATE TABLE \"neural_chains\" (\n\t\"created_at\" timestamp DEFAULT now() NOT NULL,\n\t\"id\" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,\n\t\"summary\" text,\n\t\"title\" text,\n\t\"updated_at\" timestamp DEFAULT now() NOT NULL,\n\t\"user_id\" text NOT NULL\n);\n",
+      "\nCREATE TABLE \"user_credits\" (\n\t\"created_at\" timestamp DEFAULT now() NOT NULL,\n\t\"diamonds_balance\" integer DEFAULT 0 NOT NULL,\n\t\"monthly_limit\" integer DEFAULT 0 NOT NULL,\n\t\"period_start_at\" timestamp,\n\t\"tier\" \"user_tier\" DEFAULT 'starter' NOT NULL,\n\t\"updated_at\" timestamp DEFAULT now() NOT NULL,\n\t\"user_id\" text PRIMARY KEY NOT NULL\n);\n",
+      "\nALTER TABLE \"neutral_chain_steps\" ADD CONSTRAINT \"neutral_chain_steps_chain_id_neural_chains_id_fk\" FOREIGN KEY (\"chain_id\") REFERENCES \"public\".\"neural_chains\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "\nALTER TABLE \"neural_chains\" ADD CONSTRAINT \"neural_chains_user_id_users_id_fk\" FOREIGN KEY (\"user_id\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE cascade ON UPDATE no action;",
+      "\nALTER TABLE \"user_credits\" ADD CONSTRAINT \"user_credits_user_id_users_id_fk\" FOREIGN KEY (\"user_id\") REFERENCES \"public\".\"users\"(\"id\") ON DELETE cascade ON UPDATE no action;"
+    ],
+    "bps": true,
+    "folderMillis": 1767703482936,
+    "hash": "7a253cec881df716c969c8b1f0a59378de7013df347a7344f171ddf9d68e8e2f"
   }
 ]

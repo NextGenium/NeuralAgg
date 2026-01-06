@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { UserCreditsService } from '@/server/billing/userCredits';
+import { UserCreditsService } from '@/server/services/billing/userCredits';
 import { getRequestUserIdOrThrow } from '@/server/utils/getRequestUserId';
 
 export async function GET(req: Request) {

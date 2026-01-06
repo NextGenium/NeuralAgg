@@ -1,4 +1,4 @@
-import { chargeForModelCall } from '@/server/billing/changeForModel';
+import { chargeForModelCall } from '@/server/services/billing/changeForModel';
 import { NeuralCatalogService } from '@/services/neuralCatalog';
 
 export interface NeuralRecommendationItem {

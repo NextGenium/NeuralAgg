@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { InsufficientDiamondsError } from '@/server/billing/changeForModel';
+import { InsufficientDiamondsError } from '@/server/services/billing/changeForModel';
 import { getRequestUserIdOrThrow } from '@/server/utils/getRequestUserId';
 import { recommendServices } from '@/services/neuralRecommend';
 

@@ -1,3 +1,9 @@
+enum user_tier {
+  starter
+  creator
+  admin
+}
+
 table agents {
   id text [pk, not null]
   slug varchar(100)
@@ -587,6 +593,25 @@ table messages_files {
   indexes {
     (file_id, message_id) [pk]
   }
+}
+
+table neutral_chain_steps {
+  chain_id uuid [not null]
+  created_at timestamp [not null, default: `now()`]
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  index integer [not null]
+  models jsonb [not null]
+  prompt text [not null]
+  results jsonb [not null]
+}
+
+table neural_chains {
+  created_at timestamp [not null, default: `now()`]
+  id uuid [pk, not null, default: `gen_random_uuid()`]
+  summary text
+  title text
+  updated_at timestamp [not null, default: `now()`]
+  user_id text [not null]
 }
 
 table neural_favorite_models {
@@ -1220,6 +1245,16 @@ table users {
     created_at [name: 'users_created_at_idx']
     created_at [name: 'users_banned_true_created_at_idx']
   }
+}
+
+table user_credits {
+  created_at timestamp [not null, default: `now()`]
+  diamonds_balance integer [not null, default: 0]
+  monthly_limit integer [not null, default: 0]
+  period_start_at timestamp
+  tier user_tier [not null, default: 'starter']
+  updated_at timestamp [not null, default: `now()`]
+  user_id text [pk, not null]
 }
 
 table user_memories {

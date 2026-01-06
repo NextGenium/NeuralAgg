@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { InsufficientDiamondsError, chargeForModelCall } from '@/server/billing/changeForModel';
+import {
+  InsufficientDiamondsError,
+  chargeForModelCall,
+} from '@/server/services/billing/changeForModel';
 import { getRequestUserIdOrThrow } from '@/server/utils/getRequestUserId';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;

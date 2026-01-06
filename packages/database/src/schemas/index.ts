@@ -7,6 +7,7 @@ export * from './chatGroup';
 export * from './file';
 export * from './generation';
 export * from './message';
+export * from './neuralChains';
 export * from './neuralService';
 export * from './nextauth';
 export * from './oidc';
