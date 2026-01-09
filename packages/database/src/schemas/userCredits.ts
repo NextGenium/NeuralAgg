@@ -9,6 +9,8 @@ export const userCredits = pgTable('user_credits', {
 
   diamondsBalance: integer('diamonds_balance').notNull().default(0),
   monthlyLimit: integer('monthly_limit').notNull().default(0),
+  monthlyResetAt: timestamp('monthly_reset_at', { mode: 'date' }).notNull().defaultNow(),
+  monthlyUsed: integer('monthly_used').notNull().default(0),
   periodStartAt: timestamp('period_start_at', { withTimezone: false }),
 
   tier: userTierEnum('tier').notNull().default('starter'),

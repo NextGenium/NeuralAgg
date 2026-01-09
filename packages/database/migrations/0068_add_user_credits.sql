@@ -9,3 +9,4 @@ CREATE TABLE IF NOT EXISTS "user_credits" (
   "created_at" timestamp NOT NULL DEFAULT now(),
   "updated_at" timestamp NOT NULL DEFAULT now()
   );
+

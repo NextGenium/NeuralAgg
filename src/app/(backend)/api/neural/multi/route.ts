@@ -4,6 +4,8 @@ import {
   InsufficientDiamondsError,
   chargeForModelCall,
 } from '@/server/services/billing/changeForModel';
+import { getUserTier } from '@/server/services/billing/getUserTier';
+import { BillingError, assertModelAllowed } from '@/server/services/billing/guard';
 import { getRequestUserIdOrThrow } from '@/server/utils/getRequestUserId';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
@@ -92,10 +94,15 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = await getRequestUserIdOrThrow(req);
+    const tier = await getUserTier(userId);
 
     const results: MultiResultItem[] = await Promise.all(
       models.map(async (model) => {
         try {
+          // ✅ Starter/Creator model access check
+          assertModelAllowed(tier, model);
+
+          // списание (ваша текущая логика)
           await chargeForModelCall(userId, model);
 
           const output = await callOpenRouterModel(model, prompt);
@@ -107,6 +114,15 @@ export async function POST(req: NextRequest) {
           };
         } catch (e: any) {
           console.error(`[api/neural/multi] model "${model}" failed:`, e);
+
+          // ✅ тарифные ошибки (Starter запрет, Creator monthly limit, etc.)
+          if (e instanceof BillingError) {
+            return {
+              error: e.code,
+              model,
+              ok: false,
+            };
+          }
 
           if (e instanceof InsufficientDiamondsError) {
             return {

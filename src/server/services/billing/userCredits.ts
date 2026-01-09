@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 
+import { TIERS } from '@/config/billing/tiers';
 import { userCredits } from '@/database/schemas/userCredits';
 import { serverDB } from '@/database/server';
 
@@ -79,11 +80,15 @@ export const UserCreditsService = {
 
     if (row) return row;
 
+    const starter = TIERS.starter;
+
     const [created] = await db
       .insert(userCredits)
       .values({
-        diamondsBalance: STARTER_INITIAL_DIAMONDS,
+        diamondsBalance: starter.signupBonusDiamonds,
         monthlyLimit: 0,
+        monthlyResetAt: new Date(),
+        monthlyUsed: 0,
         tier: 'starter',
         userId,
       })
@@ -114,5 +119,23 @@ export const UserCreditsService = {
       .returning();
 
     return created;
+  },
+
+  async setTier(userId: string, tier: 'starter' | 'creator' | 'admin', monthlyLimit?: number) {
+    const db = serverDB;
+
+    const [updated] = await db
+      .update(userCredits)
+      .set({
+        monthlyLimit: monthlyLimit ?? 0,
+        monthlyResetAt: new Date(),
+        monthlyUsed: 0,
+        tier,
+        updatedAt: new Date(),
+      })
+      .where(eq(userCredits.userId, userId))
+      .returning();
+
+    return updated;
   },
 };

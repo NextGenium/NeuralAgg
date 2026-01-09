@@ -10,6 +10,7 @@ const isDesktop = process.env.NEXT_PUBLIC_IS_DESKTOP_APP === '1';
 const enableReactScan = !!process.env.REACT_SCAN_MONITOR_API_KEY;
 const isUsePglite = process.env.NEXT_PUBLIC_CLIENT_DB === 'pglite';
 const shouldUseCSP = process.env.ENABLED_CSP === '1';
+const enableCodeInspector = process.env.CODE_INSPECTOR === '1';
 
 const isTest =
   process.env.NODE_ENV === 'test' || process.env.TEST === '1' || process.env.E2E === '1';
@@ -301,14 +302,25 @@ const nextConfig: NextConfig = {
   serverExternalPackages: isProd ? ['@electric-sql/pglite', 'pdfkit'] : ['pdfkit'],
 
   transpilePackages: ['pdfjs-dist', 'mermaid', 'better-auth-harmony'],
+
   turbopack: {
-    rules: isTest
-      ? void 0
-      : codeInspectorPlugin({
-          bundler: 'turbopack',
-          hotKeys: ['altKey'],
-        }),
+    rules:
+      isTest || !enableCodeInspector
+        ? void 0
+        : codeInspectorPlugin({
+            bundler: 'turbopack',
+            hotKeys: ['altKey'],
+          }),
   },
+
+  //turbopack: {
+  //  rules: isTest
+  //    ? void 0
+  //    : codeInspectorPlugin({
+  //        bundler: 'turbopack',
+  //        hotKeys: ['altKey'],
+  //       }),
+  // },
 
   typescript: {
     ignoreBuildErrors: true,
