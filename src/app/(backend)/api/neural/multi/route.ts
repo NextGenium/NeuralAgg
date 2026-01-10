@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import {
   InsufficientDiamondsError,
+  MonthlyLimitExceededError,
   chargeForModelCall,
 } from '@/server/services/billing/changeForModel';
 import { getUserTier } from '@/server/services/billing/getUserTier';
@@ -127,6 +128,14 @@ export async function POST(req: NextRequest) {
           if (e instanceof InsufficientDiamondsError) {
             return {
               error: `Insufficient diamonds (current balance: ${e.diamonds ?? 0})`,
+              model,
+              ok: false,
+            };
+          }
+
+          if (e instanceof MonthlyLimitExceededError) {
+            return {
+              error: `Monthly limit exceeded (${e.monthlyUsed}/${e.monthlyLimit})`,
               model,
               ok: false,
             };
