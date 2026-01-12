@@ -3,9 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { neuralServices } from '@/database/schemas';
 import { serverDB } from '@/database/server';
+import { DEFAULT_SERVICES } from '@/services/defaultCatalog';
 import { NeuralCatalogService } from '@/services/neuralCatalog';
 
-// tsgo / validator для этого роута ожидает именно такой контекст:
 // { params: Promise<{ slug: string }> }
 type RouteContext = {
   params: Promise<{ slug: string }>;
@@ -16,13 +16,15 @@ export const runtime = 'nodejs';
 export async function GET(_req: NextRequest, context: RouteContext) {
   const { slug } = await context.params;
 
+  // ✅ сначала пробуем БД
   const service = await NeuralCatalogService.getServiceBySlug(slug);
+  if (service) return NextResponse.json(service, { status: 200 });
 
-  if (!service) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-  }
+  // ✅ fallback: ищем в DEFAULT_SERVICES
+  const fallback = (DEFAULT_SERVICES as any[]).find((s) => s.slug === slug);
+  if (fallback) return NextResponse.json(fallback, { status: 200 });
 
-  return NextResponse.json(service, { status: 200 });
+  return NextResponse.json({ error: 'Not found' }, { status: 404 });
 }
 
 export async function PATCH(req: NextRequest, context: RouteContext) {

@@ -34,6 +34,12 @@ const ChainDetailPage = () => {
     const fetchChainDetails = async () => {
       try {
         const res = await fetch(`/api/neural/chains/${id}`, { method: 'GET' });
+        if (res.status === 401) {
+          // eslint-disable-next-line unicorn/no-await-expression-member
+          const guest = (await import('../lib/guestChains')).GuestChains.get(String(id));
+          setChain(guest as any);
+          return;
+        }
         if (!res.ok) {
           throw new Error('Failed to load chain');
         }

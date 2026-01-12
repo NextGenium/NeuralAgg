@@ -6,11 +6,11 @@ export type ModelCostConfig = {
 export const modelPricing: ModelCostConfig = {
   defaultCost: 0,
   specificModels: {
+    'anthropic/claude-3.5-sonnet': 1,
     'deepseek/chat': 1,
     'google/gemini-flash': 1,
     'gpt-4o': 1,
-    'kimi/chat': 1,
-    'openrouter/anthropic/claude-3.5-sonnet': 1,
+    //'kimi/chat': 1,
   },
 };
 

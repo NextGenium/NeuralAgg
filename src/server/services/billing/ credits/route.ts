@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { UserCreditsService } from '@/server/services/billing/userCredits';
 import { getRequestUserIdOrThrow } from '@/server/utils/getRequestUserId';
 
+export const runtime = 'nodejs';
+
 export async function GET(req: Request) {
   try {
     const userId = await getRequestUserIdOrThrow(req);
