@@ -17,6 +17,7 @@ type ChainStep = {
   // для compare-шага: выбранный ответ
   pickedModel?: string | null;
   pickedText?: string | null;
+  // eslint-disable-next-line typescript-sort-keys/interface
   prompt: string;
   results: MultiResultItem[];
 };
@@ -25,11 +26,7 @@ const AVAILABLE_MODELS: { hint?: string; id: string; label: string }[] = [
   { hint: 'LLM', id: 'openai/gpt-4o-mini', label: 'GPT-4o mini' },
   { hint: 'Premium LLM', id: 'gpt-4o', label: 'GPT-4o' }, // alias -> openai/gpt-4o
   { hint: 'LLM', id: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
-  {
-    hint: 'Light LLM',
-    id: "google/gemini-flash': 'google/gemini-2.0-flash",
-    label: 'Gemini',
-  },
+  { hint: 'Light LLM', id: 'google/gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
   { hint: 'LLM', id: 'deepseek/chat', label: 'DeepSeek' }, // alias -> deepseek/deepseek-chat
 ];
 
@@ -98,8 +95,7 @@ export default function MultiModelComparePanel() {
   }, [mode, comparePrompt, selectedModels.length]);
 
   const canChat = useMemo(() => {
-    const isCorrectMode = mode === 'picked' || mode === 'chatting';
-    return isCorrectMode && !!chatPrompt.trim() && !!pickedText;
+    return (mode === 'picked' || mode === 'chatting') && !!chatPrompt.trim() && !!pickedText;
   }, [mode, chatPrompt, pickedText]);
 
   const toggleModel = (id: string) => {
@@ -147,7 +143,6 @@ export default function MultiModelComparePanel() {
         body: JSON.stringify({
           maxTokens: 900,
           models: selectedModels,
-
           prompt: comparePrompt.trim(),
         }),
         credentials: 'include',
@@ -404,8 +399,8 @@ export default function MultiModelComparePanel() {
                     </div>
                   </div>
 
-                  <div className="mt-2 h-56 overflow-auto rounded-lg bg-[rgba(0,0,0,0.25)] p-2">
-                    <pre className="whitespace-pre-wrap break-words font-sans text-[12px] leading-relaxed">
+                  <div className="mt-2 h-72 overflow-auto overscroll-contain rounded-lg bg-[rgba(0,0,0,0.25)] p-2">
+                    <pre className="whitespace-pre font-sans text-[12px] leading-relaxed max-w-full min-w-[900px]">
                       {r.ok ? r.output : r.error}
                     </pre>
                   </div>
@@ -452,8 +447,8 @@ export default function MultiModelComparePanel() {
 
           <div className="rounded-xl border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.02)] p-3">
             <div className="text-[12px] font-medium opacity-85 mb-2">Ответ</div>
-            <div className="max-h-[340px] overflow-auto rounded-lg bg-[rgba(0,0,0,0.25)] p-2">
-              <pre className="whitespace-pre-wrap break-words font-sans text-[12px] leading-relaxed">
+            <div className="max-h-[520px] overflow-auto overscroll-contain rounded-lg bg-[rgba(0,0,0,0.25)] p-2">
+              <pre className="whitespace-pre font-sans text-[12px] leading-relaxed max-w-full min-w-[900px]">
                 {pickedText}
               </pre>
             </div>
@@ -495,11 +490,8 @@ export default function MultiModelComparePanel() {
                   onClick={() => void runChatStep()}
                   type="button"
                 >
-                  {(() => {
-                    /* @ts-ignore */
-                    if (mode === 'chatting') return 'Отправить';
-                    return 'Запускаем…';
-                  })()}
+                  {/* @ts-ignore */}
+                  {mode === 'chatting' ? 'Запускаем…' : 'Отправить'}
                 </button>
               </div>
 
