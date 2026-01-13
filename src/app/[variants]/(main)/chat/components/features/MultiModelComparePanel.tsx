@@ -1,7 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
-import { Flexbox } from 'react-layout-kit';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 type MultiResultItem = {
   error?: string;
@@ -11,398 +10,541 @@ type MultiResultItem = {
 };
 
 type ChainStep = {
-  createdAt: string;
+  createdAt: number;
   id: string;
-  index: number;
+  kind: 'compare' | 'chat';
   models: string[];
+  // для compare-шага: выбранный ответ
+  pickedModel?: string | null;
+  pickedText?: string | null;
   prompt: string;
   results: MultiResultItem[];
 };
 
 const AVAILABLE_MODELS: { hint?: string; id: string; label: string }[] = [
-  { hint: 'LLM', id: 'deepseek/chat', label: 'DeepSeek' },
-  { hint: 'LLM', id: 'kimi/chat', label: 'Kimi' },
-  { hint: 'Light LLM', id: 'google/gemini-flash', label: 'Gemini Flash' },
-  { hint: 'Premium LLM', id: 'gpt-4o', label: 'GPT-4o' },
+  { hint: 'LLM', id: 'openai/gpt-4o-mini', label: 'GPT-4o mini' },
+  { hint: 'Premium LLM', id: 'gpt-4o', label: 'GPT-4o' }, // alias -> openai/gpt-4o
+  { hint: 'LLM', id: 'anthropic/claude-3.5-sonnet', label: 'Claude 3.5 Sonnet' },
+  {
+    hint: 'Light LLM',
+    id: "google/gemini-flash': 'google/gemini-2.0-flash",
+    label: 'Gemini',
+  },
+  { hint: 'LLM', id: 'deepseek/chat', label: 'DeepSeek' }, // alias -> deepseek/deepseek-chat
 ];
 
-const createLocalStepId = () => `step_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+// чтобы UI не убивался и 402 реже происходил (контекст резать!)
+const MAX_CONTEXT_CHARS = 4500;
 
-const MultiModelComparePanel = () => {
-  const [prompt, setPrompt] = useState('');
-  const [selected, setSelected] = useState<string[]>([
+const genId = () =>
+  typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+function trimContext(text: string) {
+  const t = (text ?? '').trim();
+  if (t.length <= MAX_CONTEXT_CHARS) return t;
+  return t.slice(0, MAX_CONTEXT_CHARS) + '\n\n[...обрезано для лимита контекста]';
+}
+
+function buildPromptWithContext(context: string, userPrompt: string) {
+  const ctx = trimContext(context);
+  const up = (userPrompt ?? '').trim();
+  return [
+    'Контекст (результат предыдущего шага):',
+    '<<<',
+    ctx,
+    '>>>',
+    '',
+    'Новый запрос пользователя:',
+    up,
+  ].join('\n');
+}
+
+export default function MultiModelComparePanel() {
+  // STEP 1 input (compare)
+  const [comparePrompt, setComparePrompt] = useState('');
+  const [selectedModels, setSelectedModels] = useState<string[]>([
+    'openai/gpt-4o-mini',
+    'google/gemini-1.5-flash',
     'deepseek/chat',
-    'kimi/chat',
-    'google/gemini-flash',
   ]);
-  const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<MultiResultItem[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(true);
 
-  // id цепочки на бэке
-  const [chainId, setChainId] = useState<string | null>(null);
-  // локальная история шагов
+  // UI state machine
+  const [mode, setMode] = useState<'idle' | 'comparing' | 'picked' | 'chatting'>('idle');
+
+  // current compare results
+  const [compareResults, setCompareResults] = useState<MultiResultItem[]>([]);
+  const [compareError, setCompareError] = useState<string | null>(null);
+
+  // picked winner
+  const [pickedModel, setPickedModel] = useState<string | null>(null);
+  const [pickedText, setPickedText] = useState<string>('');
+
+  // chat continuation
+  const [chatModel, setChatModel] = useState<string>('openai/gpt-4o-mini');
+  const [chatPrompt, setChatPrompt] = useState<string>(''); // только "что дальше сделать"
+  const [chatError, setChatError] = useState<string | null>(null);
+
+  // chain history
   const [chain, setChain] = useState<ChainStep[]>([]);
 
-  const canRun = useMemo(
-    () => !loading && !!prompt.trim() && selected.length > 0,
-    [loading, prompt, selected],
-  );
+  // refs for scrolling
+  const resultsAnchorRef = useRef<HTMLDivElement | null>(null);
+  const pickedAnchorRef = useRef<HTMLDivElement | null>(null);
+
+  const canCompare = useMemo(() => {
+    return mode !== 'comparing' && !!comparePrompt.trim() && selectedModels.length > 0;
+  }, [mode, comparePrompt, selectedModels.length]);
+
+  const canChat = useMemo(() => {
+    const isCorrectMode = mode === 'picked' || mode === 'chatting';
+    return isCorrectMode && !!chatPrompt.trim() && !!pickedText;
+  }, [mode, chatPrompt, pickedText]);
 
   const toggleModel = (id: string) => {
-    setSelected((prev) => (prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]));
-  };
-
-  const persistStepToBackend = async (
-    currentPrompt: string,
-    currentModels: string[],
-    currentResults: MultiResultItem[],
-  ) => {
-    if (!currentResults.length) return null;
-
-    if (!chainId) {
-      const res = await fetch('/api/neural/chains', {
-        body: JSON.stringify({
-          models: currentModels,
-          prompt: currentPrompt,
-          results: currentResults,
-        }),
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        method: 'POST',
-      });
-
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        console.error('[chains] create failed', json);
-        return null;
-      }
-
-      const json = (await res.json()) as {
-        chain: { id: string };
-        step: { createdAt: string; id: string; index: number };
-      };
-
-      setChainId(json.chain.id);
-
-      return json;
-    }
-
-    const res = await fetch(`/api/neural/chains/${chainId}`, {
-      body: JSON.stringify({
-        models: currentModels,
-        prompt: currentPrompt,
-        results: currentResults,
-      }),
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      method: 'POST',
+    setSelectedModels((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return Array.from(next);
     });
-
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      console.error('[chains] append failed', json);
-      return null;
-    }
-
-    const json = (await res.json()) as {
-      chain: { id: string };
-      step: { createdAt: string; id: string; index: number };
-    };
-
-    // на всякий случай
-    setChainId(json.chain.id);
-
-    return json;
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  // scroll helpers
+  useEffect(() => {
+    if (compareResults.length > 0) {
+      setTimeout(
+        () => resultsAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+        50,
+      );
+    }
+  }, [compareResults.length]);
+
+  useEffect(() => {
+    if (mode === 'picked') {
+      setTimeout(
+        () => pickedAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+        50,
+      );
+    }
+  }, [mode]);
+
+  const runCompare = async (e: FormEvent) => {
     e.preventDefault();
-    if (!canRun) return;
+    if (!canCompare) return;
 
-    setLoading(true);
-    setError(null);
-    setResults([]);
-
-    const currentPrompt = prompt.trim();
-    const currentModels = [...selected];
+    setMode('comparing');
+    setCompareError(null);
+    setCompareResults([]);
+    setPickedModel(null);
+    setPickedText('');
+    setChatPrompt('');
+    setChatError(null);
 
     try {
       const res = await fetch('/api/neural/multi', {
         body: JSON.stringify({
-          models: currentModels,
-          prompt: currentPrompt,
+          maxTokens: 900,
+          models: selectedModels,
+
+          prompt: comparePrompt.trim(),
         }),
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         method: 'POST',
       });
 
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        setError(json?.error || `Ошибка: ${res.status}`);
+      const json = (await res.json().catch(() => null)) as {
+        error?: string;
+        message?: string;
+        ok?: boolean;
+        results?: MultiResultItem[];
+      } | null;
+
+      if (!json || !Array.isArray(json.results)) {
+        setCompareError('Сервер вернул неожиданный ответ');
+        setMode('idle');
         return;
       }
 
-      const json = (await res.json()) as { prompt: string; results: MultiResultItem[] };
-      const newResults = json.results || [];
+      if (json.error) setCompareError(json.message || json.error);
 
-      // локально
-      const localStepId = createLocalStepId();
-      const localIndex = chain.length + 1;
-      const localStep: ChainStep = {
-        createdAt: new Date().toISOString(),
-        id: localStepId,
-        index: localIndex,
-        models: currentModels,
-        prompt: currentPrompt,
-        results: newResults,
+      const results = json.results ?? [];
+      setCompareResults(results);
+
+      // добавим compare-шаг в цепочку
+      const step: ChainStep = {
+        createdAt: Date.now(),
+        id: genId(),
+        kind: 'compare',
+        models: selectedModels,
+        pickedModel: null,
+        pickedText: null,
+        prompt: comparePrompt.trim(),
+        results,
       };
 
-      setResults(newResults);
-      setChain((prev) => [...prev, localStep]);
-
-      // на бэке
-      void persistStepToBackend(currentPrompt, currentModels, newResults);
+      setChain((prev) => [step, ...prev]);
+      setMode('idle');
     } catch (err) {
-      console.error('Failed to call /api/neural/multi', err);
-      setError('Ошибка сети или сервера');
-    } finally {
-      setLoading(false);
+      console.error(err);
+      setCompareError('Ошибка сети/сервера');
+      setMode('idle');
     }
   };
 
-  const handleContinueWithModel = (r: MultiResultItem) => {
-    if (!r.output) return;
+  const pickAnswer = (modelId: string) => {
+    const r = compareResults.find((x) => x.model === modelId);
+    if (!r?.ok || !r.output) return;
 
-    const newPrompt = [
-      `Продолжи работу на основе ответа модели "${r.model}".`,
-      '',
-      'Вот этот ответ:',
-      r.output,
-      '',
-      'Сделай следующий шаг: уточни и структурируй план действий, не повторяя исходный текст дословно.',
-    ].join('\n');
+    setPickedModel(modelId);
+    setPickedText(r.output);
+    setChatModel(modelId); // по умолчанию продолжаем с той же моделью
+    setMode('picked');
 
-    setPrompt(newPrompt);
-
-    if (!selected.length) {
-      setSelected([r.model]);
-    }
+    // записать выбранный ответ в последний compare-step
+    setChain((prev) => {
+      const next = [...prev];
+      const idx = next.findIndex((s) => s.kind === 'compare' && s.prompt === comparePrompt.trim());
+      // если не нашли по промпту — просто обновим самый последний compare
+      const lastCompareIdx = idx !== -1 ? idx : next.findIndex((s) => s.kind === 'compare');
+      if (lastCompareIdx !== -1) {
+        next[lastCompareIdx] = {
+          ...next[lastCompareIdx],
+          pickedModel: modelId,
+          pickedText: r.output,
+        };
+      }
+      return next;
+    });
   };
 
-  const handleCopyToClipboard = async (r: MultiResultItem) => {
-    if (!r.output) return;
+  const backToCompare = () => {
+    setMode('idle');
+    setPickedModel(null);
+    setPickedText('');
+    setChatPrompt('');
+    setChatError(null);
+  };
+
+  const runChatStep = async () => {
+    if (!canChat) return;
+
+    setMode('chatting');
+    setChatError(null);
+
+    const combinedPrompt = buildPromptWithContext(pickedText, chatPrompt);
+
     try {
-      await navigator.clipboard.writeText(r.output);
-      // eslint-disable-next-line no-alert
-      alert('Ответ скопирован. Вставьте его в чат, чтобы продолжить диалог.');
-    } catch (e) {
-      console.error('clipboard error', e);
-      // eslint-disable-next-line no-alert
-      alert('Не удалось скопировать текст в буфер обмена.');
+      const res = await fetch('/api/neural/multi', {
+        body: JSON.stringify({
+          maxTokens: 900,
+          models: [chatModel],
+          prompt: combinedPrompt,
+        }),
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      });
+
+      const json = (await res.json().catch(() => null)) as {
+        error?: string;
+        message?: string;
+        ok?: boolean;
+        results?: MultiResultItem[];
+      } | null;
+
+      const results = (json?.results ?? []) as MultiResultItem[];
+
+      if (!Array.isArray(results) || results.length === 0) {
+        setChatError('Сервер вернул неожиданный ответ');
+        setMode('picked');
+        return;
+      }
+
+      if (json?.error) setChatError(json.message || json.error);
+
+      // обновим "текущий выбранный текст" на новый ответ (чатовый шаг)
+      const first = results[0];
+      if (first?.ok && first.output) {
+        setPickedModel(chatModel);
+        setPickedText(first.output);
+        setChatPrompt('');
+      }
+
+      // добавим chat-шаг в историю
+      const step: ChainStep = {
+        createdAt: Date.now(),
+        id: genId(),
+        kind: 'chat',
+        models: [chatModel],
+        prompt: chatPrompt.trim(),
+        results,
+      };
+      setChain((prev) => [step, ...prev]);
+
+      setMode('picked');
+    } catch (err) {
+      console.error(err);
+      setChatError('Ошибка сети/сервера');
+      setMode('picked');
     }
   };
 
-  const handleResetChain = () => {
+  const resetAll = () => {
+    setComparePrompt('');
+    setSelectedModels(['openai/gpt-4o-mini', 'google/gemini-1.5-flash', 'deepseek/chat']);
+    setCompareResults([]);
+    setCompareError(null);
+    setPickedModel(null);
+    setPickedText('');
+    setChatPrompt('');
+    setChatError(null);
     setChain([]);
-    setResults([]);
-    setPrompt('');
-    setError(null);
-    setChainId(null);
+    setMode('idle');
   };
 
-  const lastStep = chain.at(-1);
-
+  // @ts-ignore
+  // @ts-ignore
   return (
-    <Flexbox gap={8} paddingBlock={8} paddingInline={16}>
-      <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-[rgba(255,255,255,0.06)]">
-          <div className="flex flex-col gap-0.5">
-            <div className="text-[12px] font-medium opacity-80">
-              Сравнить модели и собрать цепочку
-            </div>
-            <div className="text-[11px] opacity-60">
-              Один промпт → несколько моделей. Ответы можно передавать далее как шаги цепочки.
-            </div>
+    <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)]">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[rgba(255,255,255,0.06)]">
+        <div>
+          <div className="text-[12px] font-medium opacity-90">
+            Сравнить модели и собрать цепочку
           </div>
-          <div className="flex items-center gap-2">
-            {chain.length > 0 && (
-              // eslint-disable-next-line react/button-has-type
-              <button
-                className="text-[11px] opacity-60 hover:opacity-100"
-                onClick={handleResetChain}
-              >
-                Сбросить цепочку
-              </button>
-            )}
-            {/* eslint-disable-next-line react/button-has-type */}
-            <button
-              className="text-[11px] opacity-60 hover:opacity-100"
-              onClick={() => setExpanded((v) => !v)}
-            >
-              {expanded ? 'Свернуть' : 'Развернуть'}
-            </button>
+          <div className="text-[11px] opacity-60">
+            1 промпт → несколько ответов. Выбираешь лучший → продолжаешь как в чате (с той же или
+            другой моделью).
           </div>
         </div>
+        <div className="flex gap-2">
+          <button
+            className="text-[11px] opacity-70 hover:opacity-100"
+            onClick={resetAll}
+            type="button"
+          >
+            Сбросить цепочку
+          </button>
+        </div>
+      </div>
 
-        {/* Form */}
-        {expanded && (
-          <form className="flex flex-col gap-3 px-3 py-3" onSubmit={handleSubmit}>
-            <textarea
-              className="w-full resize-none rounded-lg border border-[rgba(255,255,255,0.08)] bg-transparent px-2 py-1 text-[13px] outline-none focus:border-[rgba(255,255,255,0.25)]"
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder={
-                lastStep
-                  ? 'Следующий шаг цепочки: уточните, что нужно сделать на основе предыдущих ответов...'
-                  : 'Опишите задачу — один промпт, который запустим сразу в несколько моделей…'
-              }
-              rows={3}
-              value={prompt}
-            />
+      {/* STEP 1: Compare */}
+      <form className="px-3 py-3 flex flex-col gap-3" onSubmit={runCompare}>
+        <textarea
+          className="w-full resize-none rounded-lg border border-[rgba(255,255,255,0.08)] bg-transparent px-2 py-2 text-[13px] outline-none focus:border-[rgba(255,255,255,0.25)]"
+          onChange={(e) => setComparePrompt(e.target.value)}
+          placeholder='Например: "Создай пост о бычьем рынке криптовалют в 2026"'
+          rows={3}
+          value={comparePrompt}
+        />
 
-            <div className="flex flex-wrap gap-2">
-              {AVAILABLE_MODELS.map((m) => {
-                const active = selected.includes(m.id);
-                return (
-                  <label
-                    className={`flex cursor-pointer items-center gap-2 rounded-full border px-2 py-1 text-[11px] ${
-                      active
-                        ? 'border-[rgba(255,255,255,0.8)] bg-[rgba(255,255,255,0.08)]'
-                        : 'border-[rgba(255,255,255,0.15)] opacity-80 hover:opacity-100'
-                    }`}
-                    key={m.id}
-                  >
-                    <input
-                      checked={active}
-                      className="h-3 w-3"
-                      onChange={() => toggleModel(m.id)}
-                      type="checkbox"
-                    />
-                    <span>{m.label}</span>
-                    {m.hint && <span className="opacity-60">· {m.hint}</span>}
-                  </label>
-                );
-              })}
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="text-[11px] opacity-60">
-                За каждую выбранную модель будут списаны алмазы согласно тарифу.
-              </div>
-              {/* eslint-disable-next-line react/button-has-type */}
-              <button
-                className="rounded-lg border border-[rgba(255,255,255,0.25)] px-3 py-1 text-[12px] opacity-90 hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40"
-                disabled={!canRun}
+        <div className="flex flex-wrap gap-2">
+          {AVAILABLE_MODELS.map((m) => {
+            const active = selectedModels.includes(m.id);
+            return (
+              <label
+                className={`flex items-center gap-2 rounded-full border px-2 py-1 text-[11px] cursor-pointer ${
+                  active
+                    ? 'border-[rgba(255,255,255,0.8)] bg-[rgba(255,255,255,0.08)]'
+                    : 'border-[rgba(255,255,255,0.15)] opacity-80 hover:opacity-100'
+                }`}
+                key={m.id}
               >
-                {loading ? 'Сравниваем…' : lastStep ? 'Запустить следующий шаг' : 'Сравнить модели'}
-              </button>
-            </div>
+                <input
+                  checked={active}
+                  className="h-3 w-3"
+                  onChange={() => toggleModel(m.id)}
+                  type="checkbox"
+                />
+                <span>{m.label}</span>
+                {m.hint && <span className="opacity-60">· {m.hint}</span>}
+              </label>
+            );
+          })}
+        </div>
 
-            {error && <div className="text-[11px] text-red-400">{error}</div>}
-          </form>
-        )}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="text-[11px] opacity-60">
+            За каждую выбранную модель будут списаны алмазы.
+          </div>
+          <button
+            className="rounded-lg border border-[rgba(255,255,255,0.25)] px-3 py-1 text-[12px] opacity-90 hover:opacity-100 disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={!canCompare}
+            type="submit"
+          >
+            {mode === 'comparing' ? 'Сравниваем…' : 'Сравнить модели'}
+          </button>
+        </div>
 
-        {/* Current step results */}
-        {results.length > 0 && (
-          <div className="border-t border-[rgba(255,255,255,0.06)] px-3 py-3">
-            <div className="mb-2 text-[11px] opacity-60">Результаты текущего шага:</div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {results.map((r) => (
+        {compareError && <div className="text-[11px] text-red-400">{compareError}</div>}
+      </form>
+
+      {/* Results */}
+      <div ref={resultsAnchorRef} />
+
+      {compareResults.length > 0 && (
+        <div className="border-t border-[rgba(255,255,255,0.06)] px-3 py-3">
+          <div className="text-[11px] opacity-70 mb-2">Ответы моделей (выбери один):</div>
+
+          {/* горизонтальный ряд карточек */}
+          <div className="overflow-x-auto pb-2">
+            <div className="flex gap-3 min-w-max">
+              {compareResults.map((r) => (
                 <div
-                  className="flex flex-col gap-2 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.02)] p-2"
+                  className="w-[360px] shrink-0 rounded-xl border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.02)] p-3"
                   key={r.model}
                 >
-                  <div className="flex items-center justify-between gap-2 text-[11px]">
-                    <span className="font-medium">{r.model}</span>
-                    <span className={r.ok ? 'opacity-60' : 'text-red-400 opacity-90'}>
+                  <div className="flex items-center gap-2">
+                    <div className="font-medium text-[12px] truncate">{r.model}</div>
+                    <div className={`ml-auto text-[11px] ${r.ok ? 'opacity-60' : 'text-red-400'}`}>
                       {r.ok ? 'OK' : 'Ошибка'}
-                    </span>
-                  </div>
-                  <div className="max-h-64 overflow-auto rounded bg-[rgba(0,0,0,0.25)] p-2 text-[12px] leading-relaxed">
-                    {r.ok ? (
-                      <pre className="whitespace-pre-wrap break-words font-sans text-[12px]">
-                        {r.output}
-                      </pre>
-                    ) : (
-                      <span>{r.error}</span>
-                    )}
+                    </div>
                   </div>
 
-                  {/* Chain actions */}
-                  {r.ok && r.output && (
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="text-[10px] opacity-60">
-                        Использовать этот ответ как вход для следующего шага или для чата.
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {/* eslint-disable-next-line react/button-has-type */}
-                        <button
-                          className="rounded-md border border-[rgba(255,255,255,0.2)] px-2 py-0.5 text-[11px] opacity-90 hover:opacity-100"
-                          onClick={() => handleContinueWithModel(r)}
-                        >
-                          Продолжить с этой моделью
-                        </button>
-                        {/* eslint-disable-next-line react/button-has-type */}
-                        <button
-                          className="rounded-md border border-[rgba(255,255,255,0.2)] px-2 py-0.5 text-[11px] opacity-90 hover:opacity-100"
-                          onClick={() => handleCopyToClipboard(r)}
-                        >
-                          Вставить в чат
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  <div className="mt-2 h-56 overflow-auto rounded-lg bg-[rgba(0,0,0,0.25)] p-2">
+                    <pre className="whitespace-pre-wrap break-words font-sans text-[12px] leading-relaxed">
+                      {r.ok ? r.output : r.error}
+                    </pre>
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <button
+                      className="rounded-md border border-[rgba(255,255,255,0.2)] px-2 py-1 text-[11px] hover:opacity-100 opacity-90 disabled:opacity-40"
+                      disabled={!r.ok || !r.output}
+                      onClick={() => pickAnswer(r.model)}
+                      type="button"
+                    >
+                      Выбрать этот ответ
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-        )}
 
-        {/* Chain history */}
-        {chain.length > 0 && (
-          <div className="border-t border-[rgba(255,255,255,0.06)] px-3 py-3">
-            <div className="mb-2 text-[11px] font-medium opacity-80">
-              Цепочка шагов ({chain.length})
-              {chainId && (
-                <span className="ml-2 text-[10px] opacity-50">(сохранена, id: {chainId})</span>
-              )}
+          <div className="text-[10px] opacity-50">
+            Листай горизонтально, чтобы сравнивать ответы “окошками”.
+          </div>
+        </div>
+      )}
+
+      {/* Picked view (single answer + chat composer) */}
+      <div ref={pickedAnchorRef} />
+
+      {mode === 'picked' && pickedModel && pickedText && (
+        <div className="border-t border-[rgba(255,255,255,0.06)] px-3 py-3">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="text-[11px] opacity-70">
+              Выбранный ответ: <span className="opacity-95">{pickedModel}</span>
             </div>
-            <div className="flex flex-col gap-2 max-h-52 overflow-auto">
-              {chain.map((step) => (
-                <div
-                  className="rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.01)] p-2"
-                  key={step.id}
+
+            <button
+              className="text-[11px] opacity-60 hover:opacity-100"
+              onClick={backToCompare}
+              type="button"
+            >
+              ← Назад к сравнению
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.02)] p-3">
+            <div className="text-[12px] font-medium opacity-85 mb-2">Ответ</div>
+            <div className="max-h-[340px] overflow-auto rounded-lg bg-[rgba(0,0,0,0.25)] p-2">
+              <pre className="whitespace-pre-wrap break-words font-sans text-[12px] leading-relaxed">
+                {pickedText}
+              </pre>
+            </div>
+
+            {/* Chat composer */}
+            <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.10)] bg-[rgba(255,255,255,0.01)] p-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-[11px] opacity-70">Продолжить работу с:</div>
+
+                <select
+                  className="rounded-md border border-[rgba(255,255,255,0.2)] bg-transparent px-2 py-1 text-[11px]"
+                  onChange={(e) => setChatModel(e.target.value)}
+                  value={chatModel}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-[11px] font-medium">Шаг {step.index}</div>
-                    <div className="text-[10px] opacity-50">
-                      {new Date(step.createdAt).toLocaleTimeString()}
-                    </div>
-                  </div>
-                  <div className="mt-1 text-[11px] opacity-70">
-                    Модели: {step.models.join(', ')}
-                  </div>
-                  <div className="mt-1 max-h-16 overflow-hidden text-[11px] opacity-80">
-                    <span className="opacity-60">Промпт: </span>
-                    {step.prompt.length > 160 ? `${step.prompt.slice(0, 160)}…` : step.prompt}
-                  </div>
+                  {AVAILABLE_MODELS.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.label} ({m.id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <textarea
+                className="mt-2 w-full min-h-[70px] rounded-md border border-[rgba(255,255,255,0.18)] bg-transparent px-2 py-2 text-[12px] outline-none focus:border-[rgba(255,255,255,0.35)]"
+                onChange={(e) => setChatPrompt(e.target.value)}
+                placeholder='Например: "Придумай 10 идей для картинки под этот пост в инстаграм"'
+                value={chatPrompt}
+              />
+
+              <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+                <div className="text-[11px] opacity-55">
+                  Контекст выбранного ответа подмешивается автоматически (скрыто).
                 </div>
-              ))}
+
+                <button
+                  className="rounded-lg border border-[rgba(255,255,255,0.25)] px-3 py-1 text-[12px] opacity-90 hover:opacity-100 disabled:opacity-40"
+                  /* @ts-ignore */
+                  disabled={!canChat || mode === 'chatting'}
+                  onClick={() => void runChatStep()}
+                  type="button"
+                >
+                  {(() => {
+                    /* @ts-ignore */
+                    if (mode === 'chatting') return 'Отправить';
+                    return 'Запускаем…';
+                  })()}
+                </button>
+              </div>
+
+              {chatError && <div className="mt-2 text-[11px] text-red-400">{chatError}</div>}
             </div>
           </div>
-        )}
-      </div>
-    </Flexbox>
-  );
-};
+        </div>
+      )}
 
-export default MultiModelComparePanel;
+      {/* Chain history */}
+      {chain.length > 0 && (
+        <div className="border-t border-[rgba(255,255,255,0.06)] px-3 py-3">
+          <div className="text-[11px] font-medium opacity-85 mb-2">
+            История шагов ({chain.length})
+          </div>
+
+          <div className="max-h-56 overflow-auto flex flex-col gap-2">
+            {chain.map((s) => (
+              <div
+                className="rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.01)] p-2"
+                key={s.id}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[11px] font-medium">
+                    {s.kind === 'compare' ? 'Сравнение моделей' : 'Чат-шаг'}
+                  </div>
+                  <div className="text-[10px] opacity-50">
+                    {new Date(s.createdAt).toLocaleTimeString()}
+                  </div>
+                </div>
+
+                <div className="mt-1 text-[10px] opacity-70">Модели: {s.models.join(', ')}</div>
+
+                {s.kind === 'compare' && s.pickedModel && (
+                  <div className="mt-1 text-[10px] opacity-70">
+                    Выбрано: <span className="opacity-90">{s.pickedModel}</span>
+                  </div>
+                )}
+
+                <div className="mt-1 text-[10px] opacity-70 line-clamp-2">Промпт: {s.prompt}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

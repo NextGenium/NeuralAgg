@@ -33,10 +33,10 @@ const MODEL_ALIASES: Record<string, string> = {
   'deepseek': 'deepseek/deepseek-chat',
   'deepseek/chat': 'deepseek/deepseek-chat',
 
-  'gemini-flash': 'google/gemini-2.0-flash-001',
+  'gemini-flash': 'google/gemini-2.0-flash',
   'google/gemini-1.5-flash': 'google/gemini-1.5-flash',
-  'google/gemini-2.0-flash': 'google/gemini-2.0-flash',
-  'google/gemini-flash': 'google/gemini-2.0-flash-001',
+  'google/gemini-2.0-flash': 'google/gemini-2.0-flash-001',
+  'google/gemini-flash': 'google/gemini-2.0-flash',
 
   'gpt-4o': 'openai/gpt-4o',
   'gpt-4o-mini': 'openai/gpt-4o-mini',
@@ -52,6 +52,7 @@ function normalizeOpenRouterModelId(input: string): string {
 }
 
 type MultiRequestBody = {
+  maxTokens?: number;
   models?: string[];
   prompt?: string;
 };
@@ -64,13 +65,19 @@ type MultiResultItem = {
   output?: string;
 };
 
-async function callOpenRouterModel(model: string, prompt: string): Promise<string> {
+async function callOpenRouterModel(
+  model: string,
+  prompt: string,
+  maxTokens = 900,
+): Promise<string> {
   if (!OPENROUTER_API_KEY) throw new Error('OPENROUTER_API_KEY_NOT_CONFIGURED');
 
   const res = await fetch(OPENROUTER_API_URL, {
     body: JSON.stringify({
+      maxTokens: maxTokens,
       messages: [{ content: prompt, role: 'user' }],
       model,
+      temperature: 0.4,
     }),
     headers: {
       // ✅ FIX: правильная строка
@@ -170,8 +177,9 @@ export async function POST(req: NextRequest) {
       const results: MultiResultItem[] = await Promise.all(
         models.map(async (model) => {
           const normalizedModel = normalizeOpenRouterModelId(model);
+          const maxTokens = Math.min(Math.max(Number(body.maxTokens ?? 900), 200), 1200);
           try {
-            const output = await callOpenRouterModel(normalizedModel, prompt);
+            const output = await callOpenRouterModel(normalizedModel, prompt, maxTokens);
             return { model, normalizedModel, ok: true, output };
           } catch (e: any) {
             return { error: e?.message ?? 'MODEL_ERROR', model, normalizedModel, ok: false };
@@ -205,12 +213,13 @@ export async function POST(req: NextRequest) {
     const results: MultiResultItem[] = await Promise.all(
       models.map(async (model) => {
         const normalizedModel = normalizeOpenRouterModelId(model);
+        const maxTokens = Math.min(Math.max(Number(body.maxTokens ?? 900), 200), 1200);
         try {
           // ВАЖНО: проверяем доступ/списание по нормализованной модели
           assertModelAllowed(tier, normalizedModel);
           await chargeForModelCall(userId, normalizedModel);
 
-          const output = await callOpenRouterModel(normalizedModel, prompt);
+          const output = await callOpenRouterModel(normalizedModel, prompt, maxTokens);
 
           return { model, normalizedModel, ok: true, output };
         } catch (e: any) {
